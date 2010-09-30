@@ -2,6 +2,7 @@
 	
 //extern "C"
 #include <stdio.h>
+#include "common.h"
 	
 extern "C" void A_EXP_(int,int,char*);
 extern "C" int yyparse(void);
@@ -17,7 +18,7 @@ extern "C" int yylex(void);
 %}
 
 
-%union {int num; char* id;}
+%union {int num; char* id; Value* value;}
 %token IDENTIFIER CONSTANT STRING_LITERAL SIZEOF
 %token PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
@@ -34,6 +35,7 @@ extern "C" int yylex(void);
 %token <id>  ID
 %token END LP RP
 %type  <num> exp
+%type  <value> primary_exp
 %start START 
 
 %left PLUS MINUS
@@ -44,13 +46,13 @@ extern "C" int yylex(void);
 START:
 	|exp END {printf("exp value is :%d\n",$1);}
 	;
-/*
+
 primary_exp
 	: IDENTIFIER {;}
 	| CONSTANT_INT {$$ = $1;}
 	|LP primary_exp RP {$$ = $2;}
 	;
-*/
+
 exp
 	:CONSTANT_INT{$$ = $1;}
 	|exp '+' exp {$$ = $1+$3;A_EXP_($1,$3,"add");}

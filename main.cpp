@@ -19,6 +19,7 @@ extern "C" {
 
 #endif
 #define C_EXPORT extern  "C"
+LLVMContext *llvm_context;
 extern "C" int yyparse(void);
 typedef Value Fvalue;
 typedef std::string Fstring;
@@ -28,25 +29,37 @@ static std::map<std::string, Value*> NamedValues;
 
 class AST_expr{
 public:
-	virtual ~AST_expr(){}
+AST_expr(){}
+virtual ~AST_expr(){};
+virtual Fvalue *code()=0;
+};
+Fvalue * A_error(const char *str){fprintf(stderr,"Error: %s\n",str);return NULL;}
+class AST_integer: public AST_expr{
+public:
+	
+	int var_value;
+	
+	AST_integer(int val):var_value(val){}
 	virtual Fvalue *code();
 };
-class AST_number: public AST_expr{
-public:
-	
-	int ivalue;
-	
-	
-	AST_number(int val):ivalue(val){}
-	virtual Value *code();
-};
+Fvalue *AST_integer::code(){
+	return ConstantInt::get(*llvm_context,APInt(32,var_value));
+
+
+}
 class AST_var	: public AST_expr{
 public:
-	Fstring name;
-AST_var(const Fstring &name):name(name){}
+	Fstring var_name;
+AST_var(const Fstring &name):var_name(name){}
 virtual Fvalue *code();
 
 };
+Fvalue *AST_var::code(){
+
+	Fvalue *V = NamedValues[var_name];
+	return V?V:NULL;
+
+}
 class AST_bin   : public AST_expr{
 public:
 	char op;
@@ -55,13 +68,53 @@ public:
 virtual Fvalue *code();
 
 };
+Fvalue *AST_bin::code(){
+	Fvalue *lhs = LHS->code();
+	Fvalue *rhs = RHS->code();
+
+	if(lhs == NULL||rhs == NULL)
+		return NULL;
+		switch (op){
+		case '+':return Builder.CreateAdd(lhs,rhs,"add");break;
+		case '-':return Builder.CreateSub(lhs,rhs,"sub");break;
+		case '*':return Builder.CreateMul(lhs,rhs,"mul");break;
+		case '<':
+		return Builder.CreateICmpULT(lhs,rhs,"cmp");
+		//return Builder.CreateUITOInt(lhs,
+		//Type::getInt32Type(*llvm_context), "bool");
+			break;
+		default:
+			return A_error("无效的操作符");
+
+
+		}
+	
+
+
+}
 class AST_call  : public AST_expr{
 public:
-	Fstring func;
+	Fstring name;
 	std::vector<AST_expr*> args;
-	AST_call(const Fstring &func, std::vector<AST_expr*> &args):func(func), args(args){}
+	AST_call(const Fstring &func, std::vector<AST_expr*> &args):name(func), args(args){}
 virtual Fvalue *code();
 };
+Fvalue *AST_call::code(){
+  Function *func = TheModule->getFunction(name);
+	if(func == NULL)
+		return A_error("未知的函数\n");
+	if(func->arg_size() != args.size())
+		return A_error("参数错误\n");
+	std::vector<Fvalue *> Argsv; //传给createcall的func参数列表
+
+	for(unsigned int i = 0,e = args.size(); i != e; ++i){
+
+		Argsv.push_back(args[i]->code());
+		if ( Argsv.back() == NULL) return 0;
+
+	}
+	return Builder.CreateCall(func,Argsv.begin(),Argsv.end(),"call");
+}
 class AST_proto {
 public:
 	Fstring name;
@@ -114,7 +167,8 @@ void A_EXP_(int a,int b,char*op){
 int main(){
 
   LLVMContext &Context = getGlobalContext();
-  TheModule = new Module("cool jit",Context);
+  llvm_context = &Context;
+  TheModule = new Module("cool jit",*llvm_context);
 
 //	yyparse();
 std::vector<const Type*> Doubles(2, Type::getDoubleTy(getGlobalContext()));

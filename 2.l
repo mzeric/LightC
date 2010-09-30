@@ -7,11 +7,13 @@ FS			(f|F|l|L)
 IS			(u|U|l|L)*
 %{
 
+#include "common.h"
 #include"2.tab.h"
 //#include"y.tab.h"
 //typedef int YYSTYLE;
 //extern int yylval;
 
+extern "C" int yylex();
 
 %}
 
