@@ -18,6 +18,11 @@ extern "C" void yyerror(char const *s)
 	fflush(stdout);
 	printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
 }
+void check(const char*str){
+
+	printf(" [%s] ",str);
+
+}
 
 
 %}
@@ -28,12 +33,16 @@ extern "C" void yyerror(char const *s)
     char* id;
     Value* value;
     std::string *string;
+    std::vector<Fstring> *parameter; 
 
-    AST_expr *ast_expr;
+    AST_expr    *ast_expr;
+    AST_declare *ast_declare;
+    AST_args    *ast_args;
+    AST_func	*ast_func;  //func definition
     
     
 }
-%token IDENTIFIER CONSTANT STRING_LITERAL SIZEOF
+%token CONSTANT STRING_LITERAL SIZEOF
 %token PTR_OP INC_OP DEC_OP LEFT_OP RIGHT_OP LE_OP GE_OP EQ_OP NE_OP
 %token AND_OP OR_OP MUL_ASSIGN DIV_ASSIGN MOD_ASSIGN ADD_ASSIGN
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
@@ -49,17 +58,44 @@ extern "C" void yyerror(char const *s)
 %start translation_unit
 
 %token <num> CONSTANT_INT
+%token <id> IDENTIFIER
+%type <ast_func> function_definition
+%type <ast_declare> declarator
+%type <ast_declare> direct_declarator
+%type <ast_args>   parameter_type_list
+%type <ast_args>   parameter_list
+%type <ast_declare>   parameter_declaration
+%type <ast_expr>    compound_statement 
 
+%type <ast_expr>    primary_expression
+%type <ast_expr>    postfix_expression 
+%type <ast_expr>    argument_expression_list 
+%type <ast_expr>    unary_expression 
+%type <ast_expr>    cast_expression 
+%type <ast_expr>    multiplicative_expression
+%type <ast_expr>    additive_expression
+%type <ast_expr>    shift_expression
+%type <ast_expr>    relational_expression
+%type <ast_expr>    equality_expression
+%type <ast_expr>    and_expression
+%type <ast_expr>    exclusive_or_expression
+%type <ast_expr>    inclusive_or_expression
+%type <ast_expr>    logical_and_expression
+%type <ast_expr>    logical_or_expression
+%type <ast_expr>    conditional_expression
+%type <ast_expr>    assignment_expression
+%type <ast_expr>    expression
+%type <ast_expr>    constant_expression
 
 
 
 %%
 
 primary_expression
-	: IDENTIFIER
-	| CONSTANT_INT {printf("got CONSTANT_INT\n");}
-	| STRING_LITERAL
-	| '(' expression ')'
+	: IDENTIFIER {check("identifier");}
+	| CONSTANT_INT {printf(" [CONSTANT_INT] ");}
+	| STRING_LITERAL{printf(" [literal] ");}
+	| '(' expression ')'{printf(" [括号] ");}
 	;
 
 postfix_expression
@@ -112,7 +148,7 @@ multiplicative_expression
 
 additive_expression
 	: multiplicative_expression
-	| additive_expression '+' multiplicative_expression
+	| additive_expression '+' multiplicative_expression {check("计算_加法");}
 	| additive_expression '-' multiplicative_expression
 	;
 
@@ -168,7 +204,7 @@ conditional_expression
 
 assignment_expression
 	: conditional_expression
-	| unary_expression assignment_operator assignment_expression
+	| unary_expression assignment_operator assignment_expression{printf(" [赋值表达式] ");}
 	;
 
 assignment_operator
@@ -195,15 +231,15 @@ constant_expression
 	;
 
 declaration
-	: declaration_specifiers ';'
-	| declaration_specifiers init_declarator_list ';'
+	: declaration_specifiers ';' {;}//声明前缀 类型 int 等
+	| declaration_specifiers init_declarator_list ';' {;} //完整声明 包含变量名 或 初值
 	;
 
 declaration_specifiers
 	: storage_class_specifier
 	| storage_class_specifier declaration_specifiers
-	| type_specifier
-	| type_specifier declaration_specifiers
+	| type_specifier {;}//int long etc
+	| type_specifier declaration_specifiers {;}
 	| type_qualifier
 	| type_qualifier declaration_specifiers
 	| function_specifier
@@ -216,8 +252,8 @@ init_declarator_list
 	;
 
 init_declarator
-	: declarator
-	| declarator '=' initializer
+	: declarator  {check("声明");}
+	| declarator '=' initializer {check("声明_assign");}
 	;
 
 storage_class_specifier
@@ -314,24 +350,32 @@ function_specifier
 
 declarator
 	: pointer direct_declarator
-	| direct_declarator
+	| direct_declarator {
+	$$ = $1;
+	}
 	;
 
 
 direct_declarator
-	: IDENTIFIER
-	| '(' declarator ')'
-	| direct_declarator '[' type_qualifier_list assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list ']'
-	| direct_declarator '[' assignment_expression ']'
-	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'
-	| direct_declarator '[' type_qualifier_list '*' ']'
-	| direct_declarator '[' '*' ']'
-	| direct_declarator '[' ']'
-	| direct_declarator '(' parameter_type_list ')'
-	| direct_declarator '(' identifier_list ')'
-	| direct_declarator '(' ')'
+	: IDENTIFIER {check("identifier_declartor");
+		$$ = new AST_declare;
+		$$->set_name($1);
+	}
+	| '(' declarator ')' {check("1");}
+	| direct_declarator '[' type_qualifier_list assignment_expression ']'{check("1");}
+	| direct_declarator '[' type_qualifier_list ']'{check("1");}
+	| direct_declarator '[' assignment_expression ']'{check("1");}
+	| direct_declarator '[' STATIC type_qualifier_list assignment_expression ']'{check("1");}
+	| direct_declarator '[' type_qualifier_list STATIC assignment_expression ']'{check("1");}
+	| direct_declarator '[' type_qualifier_list '*' ']'{check("1");}
+	| direct_declarator '[' '*' ']'{check("1");}
+	| direct_declarator '[' ']'{check("1");}
+	| direct_declarator '(' parameter_type_list ')' {check("函数_声明");
+			$$ = new AST_proto($1->get_name(),$3->get_args());
+	
+	}
+	| direct_declarator '(' identifier_list ')'{check("1");}
+	| direct_declarator '(' ')'{check("1");}
 	;
 
 pointer
@@ -348,17 +392,28 @@ type_qualifier_list
 
 
 parameter_type_list
-	: parameter_list
-	| parameter_list ',' ELLIPSIS
+	: parameter_list {
+	$$ = $1;
+	}
+	| parameter_list ',' ELLIPSIS {$$ = $1;}
 	;
 
 parameter_list
-	: parameter_declaration
-	| parameter_list ',' parameter_declaration
+	: parameter_declaration {
+			$$ = new AST_args;
+			$$->add_args($1->get_name());
+	}
+	
+	| parameter_list ',' parameter_declaration{
+			$$->add_args($3->get_name());
+	}
 	;
 
 parameter_declaration
-	: declaration_specifiers declarator
+	: declaration_specifiers declarator{check("参数");// 类型 + 变量
+	$$ =  $2;
+			//$2[strlen($2)-1]='\0';
+	}
 	| declaration_specifiers abstract_declarator
 	| declaration_specifiers
 	;
@@ -421,12 +476,12 @@ designator
 	;
 
 statement
-	: labeled_statement
+	: labeled_statement  {check("块_标签");}
 	| compound_statement
-	| expression_statement
-	| selection_statement
-	| iteration_statement
-	| jump_statement
+	| expression_statement {check("块_表达式");}
+	| selection_statement  {check("块_选择IF/SWITCH");}
+	| iteration_statement  {check("块_循环");}
+	| jump_statement  {check("块_跳转");}
 	;
 
 labeled_statement
@@ -489,8 +544,33 @@ external_declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator declaration_list compound_statement
-	| declaration_specifiers declarator compound_statement
+	: declaration_specifiers declarator declaration_list compound_statement{check("函数_define1");
+
+
+
+ }
+	| declaration_specifiers declarator compound_statement{check("函数_define2");
+
+//	$2->code();
+
+/*		std::vector<Fstring> my_args;
+		my_args.push_back("first");
+		my_args.push_back("second");
+		AST_integer *vint = new AST_integer(456);
+		AST_var *my_var   = new AST_var("first");
+		AST_proto* my_proto = new AST_proto("my_func",my_args);
+
+*/
+		AST_var *my_var = new AST_var("first");
+        AST_func * my_func  = new AST_func ((AST_proto*)$2,my_var);
+		std::vector<AST_expr*> my_call_args;
+		my_call_args.push_back(new AST_integer(456));
+		my_call_args.push_back(new AST_integer(789));
+		AST_call * my_call = new AST_call("test_func",my_call_args);
+		my_func->code();
+
+        $$ = my_func;
+ } //修饰[类型] func(参数表)  语句 
 	;
 
 declaration_list
