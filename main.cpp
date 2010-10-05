@@ -20,17 +20,43 @@ extern "C" {
 
 #endif
 #define C_EXPORT extern  "C"
+extern "C" void check(const char*str,...){
+
+	printf(" [");
+	printf(str);
+	printf("] ");
+
+}
 ////////////////////////////////////////////////////////////////////////////////////
 	LLVMContext *llvm_context;
 	extern "C" int yyparse(void);
 	static Module *TheModule;
-	static IRBuilder<> Builder(getGlobalContext());
-	static std::map<std::string, Value*> NamedValues;//º¯ÊýÄÚÃû×Ö¿Õ¼ä
+	IRBuilder<> Builder(getGlobalContext());
+	std::map<std::string, Value*> NamedValues;//º¯ÊýÄÚÃüÃû¿Õ¼ä
+	std::map<std::string, Value*> NamedUnValues;//º¯ÊýÄÚÃüÃû¿Õ¼ä
     
 	
 	Fvalue * A_error(const char *str){fprintf(stderr,"Error: %s\n",str);return NULL;}
+void A_fatal(const char *str,int e=1){
+fprintf(stderr,"Error: %s\n",str);
+	exit (e);
+	}
     
 ////////////////////////////////////////////////////////////////////////////
+Fvalue * AST_expr_list::code(){
+	Fvalue *v = NULL;
+//	printf("begin expr_list::code(%X)->%X\n",expr,next?next->expr:NULL);
+	for( int i= 0;i<lists.size();i++){
+		if(lists[i]->expr == NULL){
+			A_fatal("expr is NULL!\n");
+			break;
+		}
+
+		v = lists[i]->expr->code();
+
+	}
+		return v;
+	}
     Fvalue *AST_integer::code(){
     		printf("ast_integer::code(%d)\n",var_value);
 		return ConstantInt::get(*llvm_context,APInt(32,var_value));
@@ -40,15 +66,24 @@ extern "C" {
 	
 	Fvalue *AST_var::code(){
 
-		Fvalue *V = NamedValues[name];
+		printf("ast_var::code(%X)\n",this);
+		Fvalue *V = NamedValues[var_id];
 		return V?V:NULL;
 
 	}
+	Fvalue* AST_assignment::code(){
+		Fvalue *vc = RHS->code();
+		printf("assign :%X\n",vc);
+		NamedValues[lhs]=vc;
+		
+		vc->setName(lhs);
+		return vc;	
+	};
 	
 	Fvalue *AST_bin::code(){
 		Fvalue *lhs = LHS->code();
 		Fvalue *rhs = RHS->code();
-		printf("AST_bin:code(op:%c,)\n",op);
+		printf("AST_bin:code(op:%c,%X,%X)\n",op,lhs,rhs);
 
 		if(lhs == NULL||rhs == NULL)
 			return NULL;
@@ -69,7 +104,7 @@ extern "C" {
 		}
     }
     
-    Fvalue *AST_call::code(){//´¥·¢Ò»¸öº¯Êýµ÷ÓÃ
+Fvalue *AST_call::code(){//´¥·¢Ò»¸öº¯Êýµ÷ÓÃ
 		Function *func = TheModule->getFunction(name);
 		if(func == NULL)
 			return A_error("Î´ÖªµÄº¯Êý\n");
@@ -84,9 +119,23 @@ extern "C" {
             
 		}
 		return Builder.CreateCall(func,Argsv.begin(),Argsv.end(),"call");
-	}
-    
-    Function* AST_proto::code(){
+}
+/////////////////// AST_declare->AST_local_var
+AST_local_var::AST_local_var(AST_declare *s,Fvalue *v ){
+		if(v == NULL){//¿¿¿¿¿¿¿
+			NamedUnValues[s->decl_id] =  NULL;
+
+		}{
+			NamedValues[s->decl_id] = v;
+
+		}
+		printf("[AST_local_var::add_v]");
+}
+Fvalue* AST_local_var::code(){
+		printf("ast_local_var::code(%X)\n",this);	
+}
+///////////////////
+Function* AST_proto::code(){
 		std::vector<const Type*> int_args(args.size(),Type::getInt32Ty(*llvm_context));	//²ÎÊýÀàÐÍ
 		FunctionType * func_type = FunctionType::get(Type::getInt32Ty(*llvm_context),//·µ»ØÖµÀàÐÍ
                                                      int_args,false);
@@ -116,8 +165,8 @@ extern "C" {
 		}
 	//	printf("proto:%x\n",func);
 		return func;
-    }
-    
+}
+////////////////////////////////    
     Function* AST_func::code(Fvalue *ret_value ){
         NamedValues.clear();//Çå³ýÃû×Ö¿Õ¼ä(·ûºÅ±í)
         Function* func = proto->code();
@@ -125,7 +174,7 @@ extern "C" {
             printf("func.NULL\n");
             return NULL;
         }
-
+printf("begin body code\n");
         BasicBlock *func_block = BasicBlock::Create(*llvm_context,"entry",func);
         Builder.SetInsertPoint(func_block);
         Fvalue *ret_expr=NULL;
@@ -184,7 +233,7 @@ extern "C" {
 		LLVMContext &Context = getGlobalContext();
 		llvm_context = &Context;
 		TheModule = new Module("cool jit",*llvm_context);
-        
+ /*		       
 		std::vector<const Type*> Doubles(2, Type::getDoubleTy(getGlobalContext()));
 
 		FunctionType *FT = FunctionType::get(Type::getDoubleTy(getGlobalContext()),
@@ -204,9 +253,10 @@ extern "C" {
         
 		Value *va = ConstantFP::get(getGlobalContext(),APFloat((float)3));
 		Value *vb = NULL;
-		vb = Builder.CreateFAdd(NamedValues["he"],NamedValues["he"],"addtmp");
+		vb = Builder.CreateFAdd(NamedValues["he"],NamedValues["he"],"he");
+		vb->setName("hea");
 		Builder.CreateRet(vb);
-/*		
+
 		std::vector<Fstring> my_args;
 		my_args.push_back("first");
 		my_args.push_back("second");
@@ -231,5 +281,5 @@ extern "C" {
 		return 0;
         
         
-	}
     
+}

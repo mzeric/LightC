@@ -17,25 +17,8 @@ void count(void);
 void comment(void);
 int column = 0;
 extern "C" void yyerror(const char*);
+int lvc_yyleng;
 
-
-int check_type(void)
-{
-/*
-* pseudo code --- this is what it should check
-*
-*	if (yytext == type_name)
-*		return TYPE_NAME;
-*
-*	return IDENTIFIER;
-*/
-
-/*
-*	it actually will only return IDENTIFIER
-*/
-
-	return IDENTIFIER;
-}
 %}
 
 %%
@@ -82,6 +65,7 @@ int check_type(void)
 "while"			{ count(); return(WHILE); }
 
 {L}({L}|{D})*		{ count(); yylval.id = yytext;
+				  lvc_yyleng = yyleng;
 				return(IDENTIFIER);}
 
 0[xX]{H}+{IS}?		{ count(); return(CONSTANT); }
@@ -122,12 +106,14 @@ L?\"(\\.|[^\\"\n])*\"	{ count(); return(STRING_LITERAL); }
 ">="			{ count(); return(GE_OP); }
 "=="			{ count(); return(EQ_OP); }
 "!="			{ count(); return(NE_OP); }
-";"			{ count(); return(';'); }
+";"			{ count(); return(';');	}
 ("{"|"<%")		{ count(); return('{'); }
 ("}"|"%>")		{ count(); return('}'); }
 ","			{ count(); return(','); }
 ":"			{ count(); return(':'); }
-"="			{ count(); return('='); }
+"="			{ count(); //yylval.id = yytext;
+				return(ASSIGN); 
+			}
 "("			{ count(); return('('); }
 ")"			{ count(); return(')'); }
 ("["|"<:")		{ count(); return('['); }
@@ -165,8 +151,9 @@ void count(void)
 			column += 8 - (column % 8);
 		else
 			column++;
-
+#ifdef LVC_DEBUG
 	ECHO;
+#endif
 }
 
 

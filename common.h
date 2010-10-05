@@ -12,11 +12,31 @@ using namespace llvm;
 typedef Value Fvalue;
 typedef std::string Fstring;
 
+extern "C" void check(const char*str,...);
+
+#define printf
+//static std::map<std::string, Value*> NamedValues;
+
 class AST_expr{
   public:
+  //Fstring expr_id;
     AST_expr(){}
     virtual ~AST_expr(){};
     virtual Fvalue *code()=0;
+};
+class AST_expr_list:public AST_expr{
+public:
+	AST_expr* expr;
+	AST_expr_list* next;
+	AST_expr_list(AST_expr*e ):
+		expr(e){}
+	std::vector<AST_expr_list*> lists;
+	void append_expr(AST_expr_list*e){
+		next = e;
+		lists.push_back(e);
+	}
+	Fvalue * code();
+
 };
 class AST_integer: public AST_expr{
   public:
@@ -29,8 +49,16 @@ class AST_integer: public AST_expr{
 
 class AST_var	: public AST_expr{
   public:
-    Fstring name;
-  AST_var(const Fstring &var_name):name(var_name){}
+    Fstring var_id;
+  AST_var(std::string var_name){
+  	var_id = var_name;
+#ifdef LVC_DEBUG
+    	{
+    	using namespace std;
+    		cout<<"var_add_"<<var_name<<"_";	
+	}
+#endif
+  }
     virtual Fvalue *code();
     
 };
@@ -42,6 +70,14 @@ class AST_bin   : public AST_expr{
     virtual Fvalue *code();
         
 };
+class AST_assignment:public AST_expr{
+public:
+	AST_expr *RHS;
+	Fstring   lhs;
+AST_assignment(AST_var*v,AST_expr *rhs):RHS(rhs),lhs(v->var_id){}
+	virtual Fvalue* code();
+
+};
 class AST_call  : public AST_expr{
   public:
     Fstring name;
@@ -49,17 +85,16 @@ class AST_call  : public AST_expr{
   AST_call(const Fstring &func, std::vector<AST_expr*> args):name(func), args(args){}
     virtual Fvalue *code();
 };
-class AST_declare //所有声明的基类
-{
+class AST_declare :public AST_expr{//所有声明的基类
 public:
-	Fstring id;
+	Fstring decl_id;
 	AST_declare(){}
 	~AST_declare(){}
 	virtual Fvalue *code(){};
     	virtual void	set_name(Fstring str){
-    		id = str;
+    		decl_id = str;
     	}
-	virtual Fstring get_name(){return id;}    
+	virtual Fstring get_name(){return decl_id;}    
 };
 
 class AST_args  : public AST_declare{
@@ -67,10 +102,12 @@ public:
 	std::vector <Fstring> args;
     	AST_args(){}
     	void add_args(std::string s){
+#ifdef LVC_DEBUG
     	{
     	using namespace std;
     		cout<<"add_"<<s<<"_";	
 	}
+#endif
 	args.push_back(s);
     	}
     	std::vector<Fstring> get_args(){
@@ -78,6 +115,12 @@ public:
     	}
 };
 
+class AST_local_var: public AST_declare{
+public:
+	AST_local_var(AST_declare *s,Fvalue *v=NULL);
+	Fvalue *code();
+
+};
 class AST_proto : public AST_declare{//声明一个函数
 public:
 	Fstring name;	//函数名

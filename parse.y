@@ -12,19 +12,15 @@ extern "C" int yyparse(void);
 extern "C" int yylex(void);
 extern char yytext[];
 extern int column;
+extern int lvc_yyleng;
 
 extern "C" void yyerror(char const *s)
 {
 	fflush(stdout);
 	printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
 }
-void check(const char*str){
 
-	printf(" [%s] ",str);
-
-}
-
-
+extern "C" Fvalue* aaa(Fvalue*a,Fvalue*b,char*str);
 %}
 
 
@@ -36,6 +32,7 @@ void check(const char*str){
     std::vector<Fstring> *parameter; 
 
     AST_expr    *ast_expr;
+    AST_expr_list    *ast_expr_list;
     AST_declare *ast_declare;
     AST_args    *ast_args;
     AST_func	*ast_func;  //func definition
@@ -54,11 +51,13 @@ void check(const char*str){
 %token STRUCT UNION ENUM ELLIPSIS
 
 %token CASE DEFAULT IF ELSE SWITCH WHILE DO FOR GOTO CONTINUE BREAK RETURN
+%token ASSIGN
 
 %start translation_unit
 
 %token <num> CONSTANT_INT
 %token <id> IDENTIFIER
+%type <num> assignment_operator 
 %type <ast_func> function_definition
 %type <ast_declare> declarator
 %type <ast_declare> direct_declarator
@@ -87,19 +86,44 @@ void check(const char*str){
 %type <ast_expr>    expression
 %type <ast_expr>    constant_expression
 
+%type <ast_declare> init_declarator
+%type <ast_declare> init_declarator_list
 
+%type <ast_expr>    initializer
+%type <ast_expr>    statement
+%type <ast_expr>    expression_statement
+%type <ast_expr>    block_item
+%type <ast_expr_list>    block_item_list
+
+%type <ast_expr>    declaration
 
 %%
 
 primary_expression
-	: IDENTIFIER {check("identifier");}
-	| CONSTANT_INT {printf(" [CONSTANT_INT] ");}
-	| STRING_LITERAL{printf(" [literal] ");}
-	| '(' expression ')'{printf(" [括号] ");}
+	: IDENTIFIER {check("identifier");
+
+
+	if(lvc_yyleng)
+	$1[lvc_yyleng]='\0';
+	$$ = new AST_var($1); //引用了一个变量(局部),note: AST_xx只是创建AST树,只是一个标记,实际的语义在code()里
+				//此处是往AST里加入一个变量引用节点
+			//	printf("length:%d\n",yylen);
+		printf("%X ",$$);
+	lvc_yyleng = 0;
+	}
+	| CONSTANT_INT {check("CONSTANT_INT");
+			
+	$$ = new AST_integer($1);
+		printf("%X ",$$);
+	}
+	| STRING_LITERAL{check("literal");}
+	| '(' expression ')'{check("括号");}
 	;
 
 postfix_expression
-	: primary_expression
+	: primary_expression {
+		$$ = $1;
+	}
 	| postfix_expression '[' expression ']'
 	| postfix_expression '(' ')'
 	| postfix_expression '(' argument_expression_list ')'
@@ -117,7 +141,9 @@ argument_expression_list
 	;
 
 unary_expression
-	: postfix_expression
+	: postfix_expression{
+		$$ = $1;
+	}
 	| INC_OP unary_expression
 	| DEC_OP unary_expression
 	| unary_operator cast_expression
@@ -135,31 +161,43 @@ unary_operator
 	;
 
 cast_expression
-	: unary_expression
+	: unary_expression{
+		$$ = $1;
+	}
 	| '(' type_name ')' cast_expression
 	;
 
 multiplicative_expression
-	: cast_expression
+	: cast_expression{
+		$$ = $1;
+	}
 	| multiplicative_expression '*' cast_expression
 	| multiplicative_expression '/' cast_expression
 	| multiplicative_expression '%' cast_expression
 	;
 
 additive_expression
-	: multiplicative_expression
-	| additive_expression '+' multiplicative_expression {check("计算_加法");}
+	: multiplicative_expression{
+		$$ = $1;
+	}
+	| additive_expression '+' multiplicative_expression {check("计算_加法");
+		$$ = new AST_bin('+',$1,$3);
+	}
 	| additive_expression '-' multiplicative_expression
 	;
 
 shift_expression
-	: additive_expression
+	: additive_expression{
+		$$ = $1;
+	}
 	| shift_expression LEFT_OP additive_expression
 	| shift_expression RIGHT_OP additive_expression
 	;
 
 relational_expression
-	: shift_expression
+	: shift_expression{
+		$$ = $1;
+	}
 	| relational_expression '<' shift_expression
 	| relational_expression '>' shift_expression
 	| relational_expression LE_OP shift_expression
@@ -167,48 +205,71 @@ relational_expression
 	;
 
 equality_expression
-	: relational_expression
+	: relational_expression{
+		$$ = $1;
+	}
 	| equality_expression EQ_OP relational_expression
 	| equality_expression NE_OP relational_expression
 	;
 
 and_expression
-	: equality_expression
+	: equality_expression{
+		$$ = $1;
+	}
 	| and_expression '&' equality_expression
 	;
 
 exclusive_or_expression
-	: and_expression
+	: and_expression{
+		$$ = $1;
+	}
 	| exclusive_or_expression '^' and_expression
 	;
 
 inclusive_or_expression
-	: exclusive_or_expression
+	: exclusive_or_expression{
+		$$ = $1;
+	}
 	| inclusive_or_expression '|' exclusive_or_expression
 	;
 
 logical_and_expression
-	: inclusive_or_expression
+	: inclusive_or_expression{
+		$$ = $1;
+	}
 	| logical_and_expression AND_OP inclusive_or_expression
 	;
 
 logical_or_expression
-	: logical_and_expression
+	: logical_and_expression{
+		$$ = $1;
+	}
 	| logical_or_expression OR_OP logical_and_expression
 	;
 
 conditional_expression
-	: logical_or_expression
+	: logical_or_expression {
+		$$ = $1;
+	}
 	| logical_or_expression '?' expression ':' conditional_expression
 	;
 
 assignment_expression
-	: conditional_expression
-	| unary_expression assignment_operator assignment_expression{printf(" [赋值表达式] ");}
+	: conditional_expression {  check("赋值expr");
+		$$ = $1;
+	}
+	| unary_expression assignment_operator assignment_expression{check("赋值表达式");
+	
+		$$ = new AST_assignment((AST_var*)$1,$3);
+	
+		
+		printf("%X ",$$);
+	}
 	;
 
 assignment_operator
-	: '='
+	: ASSIGN { $$ = '=';
+	}
 	| MUL_ASSIGN
 	| DIV_ASSIGN
 	| MOD_ASSIGN
@@ -222,7 +283,9 @@ assignment_operator
 	;
 
 expression
-	: assignment_expression
+	: assignment_expression  { $$ = $1;
+		printf("%X ",$1);
+	}
 	| expression ',' assignment_expression
 	;
 
@@ -232,7 +295,10 @@ constant_expression
 
 declaration
 	: declaration_specifiers ';' {;}//声明前缀 类型 int 等
-	| declaration_specifiers init_declarator_list ';' {;} //完整声明 包含变量名 或 初值
+	| declaration_specifiers init_declarator_list ';' {
+		$$ = $2;
+	
+	;} //完整声明 包含变量名 或 初值
 	;
 
 declaration_specifiers
@@ -246,14 +312,19 @@ declaration_specifiers
 	| function_specifier declaration_specifiers
 	;
 
-init_declarator_list
-	: init_declarator
+init_declarator_list	
+	: init_declarator {
+		$$ = $1;  //ast_declare
+	}
 	| init_declarator_list ',' init_declarator
 	;
 
 init_declarator
-	: declarator  {check("声明");}
-	| declarator '=' initializer {check("声明_assign");}
+	: declarator  {check("声明");
+		//$$ = $1; //ast_declare	
+		$$ = new AST_local_var($1,NULL);
+	}
+	| declarator ASSIGN initializer {check("声明_assign");}
 	;
 
 storage_class_specifier
@@ -335,7 +406,7 @@ enumerator_list
 
 enumerator
 	: IDENTIFIER
-	| IDENTIFIER '=' constant_expression
+	| IDENTIFIER ASSIGN constant_expression
 	;
 
 type_qualifier
@@ -411,7 +482,7 @@ parameter_list
 
 parameter_declaration
 	: declaration_specifiers declarator{check("参数");// 类型 + 变量
-	$$ =  $2;
+			$$ =  $2;
 			//$2[strlen($2)-1]='\0';
 	}
 	| declaration_specifiers abstract_declarator
@@ -462,7 +533,7 @@ initializer_list
 	;
 
 designation
-	: designator_list '='
+	: designator_list ASSIGN
 	;
 
 designator_list
@@ -478,7 +549,9 @@ designator
 statement
 	: labeled_statement  {check("块_标签");}
 	| compound_statement
-	| expression_statement {check("块_表达式");}
+	| expression_statement {check("块_表达式");
+		$$ = $1;
+	}
 	| selection_statement  {check("块_选择IF/SWITCH");}
 	| iteration_statement  {check("块_循环");}
 	| jump_statement  {check("块_跳转");}
@@ -492,22 +565,43 @@ labeled_statement
 
 compound_statement
 	: '{' '}'
-	| '{' block_item_list '}'
+	| '{' block_item_list '}' {
+		$$ = $2;
+		printf("%X",$2);
+	}
 	;
 
 block_item_list
-	: block_item
-	| block_item_list block_item
+	: block_item  { 
+		$$ = new AST_expr_list($1);
+
+		printf("%X",$1);
+	}
+	| block_item_list block_item{check("block_item append");
+		AST_expr_list *t = new AST_expr_list($2);
+		$1->append_expr(t);	
+		printf("append*%X*,%X ",$2,$1->expr);
+		//$$ = 
+	}
 	;
 
 block_item
-	: declaration
-	| statement
+	: declaration  {check("declaraton from block_item");
+		$$ = $1;
+	
+	}
+	| statement   {check("statement form block_item");
+		$$ =$1;
+		printf("%X ",$1);
+	}
 	;
 
 expression_statement
 	: ';'
-	| expression ';'
+	| expression ';'  {check("expression");
+		$$ = $1;
+		printf("%X",$1);
+	}
 	;
 
 selection_statement
@@ -530,7 +624,10 @@ jump_statement
 	| CONTINUE ';'
 	| BREAK ';'
 	| RETURN ';'
-	| RETURN expression ';'
+	| RETURN expression ';'{
+			
+
+	}
 	;
 
 translation_unit
@@ -560,14 +657,18 @@ function_definition
 		AST_var *my_var   = new AST_var("first");
 		AST_proto* my_proto = new AST_proto("my_func",my_args);
 
-*/
-		AST_var *my_var = new AST_var("first");
-        AST_func * my_func  = new AST_func ((AST_proto*)$2,my_var);
 		std::vector<AST_expr*> my_call_args;
 		my_call_args.push_back(new AST_integer(456));
 		my_call_args.push_back(new AST_integer(789));
 		AST_call * my_call = new AST_call("test_func",my_call_args);
+*/
+
+
+        AST_func * my_func  = new AST_func ((AST_proto*)$2,$3);
 		my_func->code();
+
+
+
 
         $$ = my_func;
  } //修饰[类型] func(参数表)  语句 
