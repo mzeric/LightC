@@ -7,7 +7,7 @@ LLVM_CXXFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags ) \
 LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs core) \
 	-D LLVM_VERSION=${LLVM_VERSION}
 
-CC=g++
+CC=clang++
 all:
 	flex  token.l
 	bison parse.y -d

@@ -20,7 +20,7 @@ extern "C" void yyerror(char const *s)
 	printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
 }
 
-extern "C" Fvalue* aaa(Fvalue*a,Fvalue*b,char*str);
+//extern "C" Fvalue* aaa(Fvalue*a,Fvalue*b,char*str);
 %}
 
 
@@ -29,9 +29,8 @@ extern "C" Fvalue* aaa(Fvalue*a,Fvalue*b,char*str);
     char* id;
     Value* value;
     std::string *string;
-    std::vector<Fstring> *parameter; 
-
-    AST_expr    *ast_expr;
+    std::vector<Fstring> *parameter;
+    Node		*ast_node;
     AST_expr_list    *ast_expr_list;
     AST_declare *ast_declare;
     AST_args    *ast_args;
@@ -58,44 +57,44 @@ extern "C" Fvalue* aaa(Fvalue*a,Fvalue*b,char*str);
 %token <num> CONSTANT_INT
 %token <id> IDENTIFIER
 %type <num> assignment_operator 
-%type <ast_func> function_definition
+%type <ast_node> function_definition
 %type <ast_declare> declarator
 %type <ast_declare> direct_declarator
 %type <ast_args>   parameter_type_list
 %type <ast_args>   parameter_list
 %type <ast_declare>   parameter_declaration
-%type <ast_expr>    compound_statement 
+%type <ast_node>    compound_statement 
 
-%type <ast_expr>    primary_expression
-%type <ast_expr>    postfix_expression 
-%type <ast_expr>    argument_expression_list 
-%type <ast_expr>    unary_expression 
-%type <ast_expr>    cast_expression 
-%type <ast_expr>    multiplicative_expression
-%type <ast_expr>    additive_expression
-%type <ast_expr>    shift_expression
-%type <ast_expr>    relational_expression
-%type <ast_expr>    equality_expression
-%type <ast_expr>    and_expression
-%type <ast_expr>    exclusive_or_expression
-%type <ast_expr>    inclusive_or_expression
-%type <ast_expr>    logical_and_expression
-%type <ast_expr>    logical_or_expression
-%type <ast_expr>    conditional_expression
-%type <ast_expr>    assignment_expression
-%type <ast_expr>    expression
-%type <ast_expr>    constant_expression
+%type <ast_node>    primary_expression
+%type <ast_node>    postfix_expression 
+%type <ast_node>    argument_expression_list 
+%type <ast_node>    unary_expression 
+%type <ast_node>    cast_expression 
+%type <ast_node>    multiplicative_expression
+%type <ast_node>    additive_expression
+%type <ast_node>    shift_expression
+%type <ast_node>    relational_expression
+%type <ast_node>    equality_expression
+%type <ast_node>    and_expression
+%type <ast_node>    exclusive_or_expression
+%type <ast_node>    inclusive_or_expression
+%type <ast_node>    logical_and_expression
+%type <ast_node>    logical_or_expression
+%type <ast_node>    conditional_expression
+%type <ast_node>    assignment_expression
+%type <ast_node>    expression
+%type <ast_node>    constant_expression
 
 %type <ast_declare> init_declarator
 %type <ast_declare> init_declarator_list
 
-%type <ast_expr>    initializer
-%type <ast_expr>    statement
-%type <ast_expr>    expression_statement
-%type <ast_expr>    block_item
+%type <ast_node>    initializer
+%type <ast_node>    statement
+%type <ast_node>    expression_statement
+%type <ast_node>    block_item
 %type <ast_expr_list>    block_item_list
 
-%type <ast_expr>    declaration
+%type <ast_node>    declaration
 
 %%
 
@@ -255,12 +254,14 @@ conditional_expression
 	;
 
 assignment_expression
-	: conditional_expression {  check("赋值expr");
+	: conditional_expression {
+		check("赋值expr");
 		$$ = $1;
 	}
-	| unary_expression assignment_operator assignment_expression{check("赋值表达式");
+	| unary_expression assignment_operator assignment_expression {
+		check("赋值表达式");
 	
-		$$ = new AST_assignment((AST_var*)$1,$3);
+		$$ = new AST_assignment($1,$3);
 	
 		
 		printf("%X ",$$);
@@ -283,7 +284,8 @@ assignment_operator
 	;
 
 expression
-	: assignment_expression  { $$ = $1;
+	: assignment_expression  {
+		$$ = $1;
 		printf("%X ",$1);
 	}
 	| expression ',' assignment_expression
@@ -428,7 +430,8 @@ declarator
 
 
 direct_declarator
-	: IDENTIFIER {check("identifier_declartor");
+	: IDENTIFIER {
+		check("identifier_declartor");
 		$$ = new AST_declare;
 		$$->set_name($1);
 	}
@@ -641,12 +644,14 @@ external_declaration
 	;
 
 function_definition
-	: declaration_specifiers declarator declaration_list compound_statement{check("函数_define1");
+	: declaration_specifiers declarator declaration_list compound_statement{
+		check("function_define_legacy");
 
 
 
  }
-	| declaration_specifiers declarator compound_statement{check("函数_define2");
+	| declaration_specifiers declarator compound_statement{
+		check("function_define");
 
 //	$2->code();
 
@@ -664,13 +669,10 @@ function_definition
 */
 
 
-        AST_func * my_func  = new AST_func ((AST_proto*)$2,$3);
-		my_func->code();
+        $$  = new AST_func ($2,$3);
+		((AST_func*)$$)->code();
 
-
-
-
-        $$ = my_func;
+       // $$ = my_func;
  } //修饰[类型] func(参数表)  语句 
 	;
 

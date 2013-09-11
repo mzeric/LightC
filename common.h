@@ -24,21 +24,26 @@ typedef std::string Fstring;
 
 extern "C" void check(const char*str,...);
 
-#define printf
+#define printf printf
 //static std::map<std::string, Value*> NamedValues;
-
-class AST_expr{
-  public:
-  //Fstring expr_id;
-    AST_expr(){}
-    virtual ~AST_expr(){};
-    virtual Fvalue *code()=0;
-};
-class AST_expr_list:public AST_expr{
+class Node {
 public:
-	AST_expr* expr;
+    class Visitor{
+    public:
+        void visit(Node* n) {};
+    };
+    void accept(Visitor* v){}
+    virtual Fvalue *code() = 0;
+
+    virtual ~Node() {};
+};
+
+
+class AST_expr_list:public Node{
+public:
+	Node* expr;
 	AST_expr_list* next;
-	AST_expr_list(AST_expr*e ):
+	AST_expr_list(Node*e ):
 		expr(e){}
 	std::vector<AST_expr_list*> lists;
 	void append_expr(AST_expr_list*e){
@@ -48,7 +53,7 @@ public:
 	Fvalue * code();
 
 };
-class AST_integer: public AST_expr{
+class AST_integer: public Node{
   public:
     
     int var_value;
@@ -57,7 +62,7 @@ class AST_integer: public AST_expr{
     virtual Fvalue *code();
 };
 
-class AST_var	: public AST_expr{
+class AST_var	: public Node{
   public:
     Fstring var_id;
   AST_var(std::string var_name){
@@ -72,30 +77,30 @@ class AST_var	: public AST_expr{
     virtual Fvalue *code();
     
 };
-class AST_bin   : public AST_expr{
+class AST_bin   : public Node{
   public:
     char op;
-    AST_expr *LHS, *RHS;
-  AST_bin(char op, AST_expr *lhs, AST_expr* rhs):op(op),LHS(lhs),RHS(rhs){}
+    Node *LHS, *RHS;
+  AST_bin(char op, Node *lhs, Node *rhs):op(op),LHS(lhs),RHS(rhs){}
     virtual Fvalue *code();
         
 };
-class AST_assignment:public AST_expr{
+class AST_assignment:public Node{
 public:
-	AST_expr *RHS;
+	Node *RHS;
 	Fstring   lhs;
-AST_assignment(AST_var*v,AST_expr *rhs):RHS(rhs),lhs(v->var_id){}
+AST_assignment(Node*v, Node *rhs):RHS(rhs),lhs(((AST_var*)v)->var_id){}
 	virtual Fvalue* code();
 
 };
-class AST_call  : public AST_expr{
+class AST_call  : public Node{
   public:
     Fstring name;
-    std::vector<AST_expr*> args;
-  AST_call(const Fstring &func, std::vector<AST_expr*> args):name(func), args(args){}
+    std::vector<Node*> args;
+  AST_call(const Fstring &func, std::vector<Node*> args):name(func), args(args){}
     virtual Fvalue *code();
 };
-class AST_declare :public AST_expr{//所有声明的基类
+class AST_declare :public Node{//所有声明的基类
 public:
 	Fstring decl_id;
 	AST_declare(){}
@@ -138,22 +143,26 @@ public:
 	AST_proto(const Fstring &fname,	const std::vector<Fstring> &args):name(fname),args(args){}
 	Function *code();
 };
-class AST_func{
+class AST_func: public Node{
 public:
-	AST_proto *proto;
-	AST_expr  *body;
+	Node  *proto;
+	Node  *body;
 	Fvalue	  *ret_value;
-	AST_func(AST_proto* proto, AST_expr* body): proto(proto),body(body){}
-	Function *code(Fvalue *ret_value = NULL);
+	AST_func(Node* proto, Node* body): proto(proto),body(body){}
+  Fvalue *code(){
+    coder(NULL);
+  }
+	Function *coder(Fvalue *ret_value = NULL);
        
        
 };
+class CodegenVisitor : public Node::Visitor{
+public:
+    void visit(AST_func* p){
 
+    }
 
-
-
-
-
+};
 
 
 

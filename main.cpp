@@ -162,9 +162,9 @@ Function* AST_proto::code(){
 		return func;
 }
 ////////////////////////////////    
-    Function* AST_func::code(Fvalue *ret_value ){
+    Function* AST_func::coder(Fvalue *ret_value ){
         NamedValues.clear();//清除名字空间(符号表)
-        Function* func = proto->code();
+        Function* func = (Function*)(proto->code());
         if(func == NULL){
             printf("func.NULL\n");
             return NULL;
@@ -191,7 +191,7 @@ printf("begin body code\n");
         func->eraseFromParent();
         return NULL;
     }
-
+/*
 	C_EXPORT {
         
 		Function* A_FUNC_proto(FunctionType* ft, char* name, Module*module){
@@ -221,7 +221,7 @@ printf("begin body code\n");
         
         
 	}
-
+*/
 	int main(){
         
 		LLVMContext &Context = getGlobalContext();
