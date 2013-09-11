@@ -1,9 +1,4 @@
 //extern "C"
-#include "llvm/DerivedTypes.h"
-#include "llvm/LLVMContext.h"
-#include "llvm/Module.h"
-#include "llvm/Analysis/Verifier.h"
-#include "llvm/Support/IRBuilder.h"
 #include <cstdio>
 #include <string>
 #include <map>
@@ -32,8 +27,8 @@ extern "C" void check(const char*str,...){
 	extern "C" int yyparse(void);
 	static Module *TheModule;
 	IRBuilder<> Builder(getGlobalContext());
-	std::map<std::string, Value*> NamedValues;//º¯ÊıÄÚÃüÃû¿Õ¼ä
-	std::map<std::string, Value*> NamedUnValues;//º¯ÊıÄÚÃüÃû¿Õ¼ä
+	std::map<std::string, Value*> NamedValues;//å‡½æ•°å†…å‘½åç©ºé—´
+	std::map<std::string, Value*> NamedUnValues;//å‡½æ•°å†…å‘½åç©ºé—´
     
 	
 	Fvalue * A_error(const char *str){fprintf(stderr,"Error: %s\n",str);return NULL;}
@@ -98,19 +93,19 @@ Fvalue * AST_expr_list::code(){
 			//Type::getInt32Type(*llvm_context), "bool");
 			break;
 		default:
-			return A_error("ÎŞĞ§µÄ²Ù×÷·û");
+			return A_error("æ— æ•ˆçš„æ“ä½œç¬¦");
 
 
 		}
     }
     
-Fvalue *AST_call::code(){//´¥·¢Ò»¸öº¯Êıµ÷ÓÃ
+Fvalue *AST_call::code(){//è§¦å‘ä¸€ä¸ªå‡½æ•°è°ƒç”¨
 		Function *func = TheModule->getFunction(name);
 		if(func == NULL)
-			return A_error("Î´ÖªµÄº¯Êı\n");
+			return A_error("æœªçŸ¥çš„å‡½æ•°\n");
 		if(func->arg_size() != args.size())
-			return A_error("²ÎÊı´íÎó\n");
-		std::vector<Fvalue *> Argsv; //´«¸øcreatecallµÄfunc²ÎÊıÁĞ±í
+			return A_error("å‚æ•°é”™è¯¯\n");
+		std::vector<Fvalue *> Argsv; //ä¼ ç»™createcallçš„funcå‚æ•°åˆ—è¡¨
 
 		for(unsigned int i = 0,e = args.size(); i != e; ++i){
             
@@ -118,11 +113,11 @@ Fvalue *AST_call::code(){//´¥·¢Ò»¸öº¯Êıµ÷ÓÃ
 			if ( Argsv.back() == NULL) return 0;
             
 		}
-		return Builder.CreateCall(func,Argsv.begin(),Argsv.end(),"call");
+		return Builder.CreateCall(func,Argsv,"call");
 }
 /////////////////// AST_declare->AST_local_var
 AST_local_var::AST_local_var(AST_declare *s,Fvalue *v ){
-		if(v == NULL){//¿¿¿¿¿¿¿
+		if(v == NULL){
 			NamedUnValues[s->decl_id] =  NULL;
 
 		}{
@@ -136,28 +131,28 @@ Fvalue* AST_local_var::code(){
 }
 ///////////////////
 Function* AST_proto::code(){
-		std::vector<const Type*> int_args(args.size(),Type::getInt32Ty(*llvm_context));	//²ÎÊıÀàĞÍ
-		FunctionType * func_type = FunctionType::get(Type::getInt32Ty(*llvm_context),//·µ»ØÖµÀàĞÍ
+		std::vector<Type*> int_args(args.size(),Type::getInt32Ty(*llvm_context));	//å‚æ•°ç±»å‹
+		FunctionType * func_type = FunctionType::get(Type::getInt32Ty(*llvm_context),//è¿”å›å€¼ç±»å‹
                                                      int_args,false);
 		Function	* func = Function::Create(func_type,Function::ExternalLinkage,name,TheModule);
 		if(func){
             printf("proto.ok\n");
         }
-            //¼ì²éÖØÃû
+            //æ£€æŸ¥é‡å
 		if(func->getName() != name){
 			func->eraseFromParent();
 			func = TheModule->getFunction(name);
 			if(!func->empty()){
-				A_error("ÖØ¸´¶¨Òå");
+				A_error("é‡å¤å®šä¹‰");
 				return NULL;
 			}
 			if(func->arg_size()!=args.size()){
-				A_error("ÖØ¸´¶¨Òå£¬²ÎÊı±í²»Í¬");
+				A_error("é‡å¤å®šä¹‰ï¼Œå‚æ•°è¡¨ä¸åŒ");
 			}
 		}
         
         
-            //±£´æ²ÎÊıÃû
+            //ä¿å­˜å‚æ•°å
 		int i =0;
 		for(Function::arg_iterator AI = func->arg_begin();i<func->arg_size();AI++,i++){
 			AI->setName(args[i]);
@@ -168,7 +163,7 @@ Function* AST_proto::code(){
 }
 ////////////////////////////////    
     Function* AST_func::code(Fvalue *ret_value ){
-        NamedValues.clear();//Çå³ıÃû×Ö¿Õ¼ä(·ûºÅ±í)
+        NamedValues.clear();//æ¸…é™¤åå­—ç©ºé—´(ç¬¦å·è¡¨)
         Function* func = proto->code();
         if(func == NULL){
             printf("func.NULL\n");
@@ -189,10 +184,10 @@ printf("begin body code\n");
         if(ret_expr ){
             Builder.CreateRet(ret_expr);
             verifyFunction(*func);
-                //func_block->end();
+            //func_block->end();
             return func;
         }
-            //¶¨ÒåÊ§°Ü
+            //å®šä¹‰å¤±è´¥
         func->eraseFromParent();
         return NULL;
     }
@@ -219,7 +214,6 @@ printf("begin body code\n");
 		void A_EXP_(int a,int b,char*op){
             
 			Value *va = ConstantFP::get(getGlobalContext(),APFloat((float)a));
-			printf("A:%x B:%d,%s\n",a,b,op);
 			Builder.CreateFAdd(va,va,"addtmp");
 
             

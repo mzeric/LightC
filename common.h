@@ -1,11 +1,21 @@
 #ifndef _LLVM_COMMON_H
 #define _LLVM_COMMON_H
 
+
+#if (LLVM_VERSION >= 33 )
+#include <llvm/IR/DerivedTypes.h>
+#include <llvm/IR/LLVMContext.h>
+#include <llvm/IR/Module.h>
+#include <llvm/Analysis/Verifier.h>
+#include <llvm/IR/IRBuilder.h>
+#else
 #include "llvm/DerivedTypes.h"
 #include "llvm/LLVMContext.h"
 #include "llvm/Module.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Support/IRBuilder.h"
+#endif
+
 #include <iostream>
 
 using namespace llvm;
