@@ -444,8 +444,11 @@ direct_declarator
 	| direct_declarator '[' type_qualifier_list '*' ']'{check("1");}
 	| direct_declarator '[' '*' ']'{check("1");}
 	| direct_declarator '[' ']'{check("1");}
-	| direct_declarator '(' parameter_type_list ')' {check("函数_声明");
-			$$ = new AST_proto($1->get_name(),$3->get_args());
+	| direct_declarator '(' parameter_type_list ')' {
+		check("函数_声明");
+
+		$$ = new AST_proto($1->get_name(),$3->get_args());
+		
 	
 	}
 	| direct_declarator '(' identifier_list ')'{check("1");}
@@ -669,8 +672,11 @@ function_definition
 */
 
 
-        $$  = new AST_func ($2,$3);
-		((AST_func*)$$)->code();
+        AST_func* p = new AST_func ($2,$3);
+        CodegenVisitor v;
+        p->accept(&v);
+        $$ = p;
+//		((AST_func*)$$)->code();
 
        // $$ = my_func;
  } //修饰[类型] func(参数表)  语句 
