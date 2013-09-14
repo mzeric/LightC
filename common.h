@@ -23,11 +23,14 @@ typedef Value Fvalue;
 typedef std::string Fstring;
 
 extern LLVMContext* llvm_context;
+extern struct Module *TheModule;
+extern IRBuilder<> Builder;
 
+extern "C" int yyparse(void);
 extern "C" void check(const char*str,...);
 void A_fatal(const char *str,int e = 1);
 #define debug_visit(x) std::cout << "visit " << x << std::endl;
-#define printf 
+#define printf printf
 //static std::map<std::string, Value*> NamedValues;
 
 class AST_func;
@@ -42,9 +45,12 @@ class AST_local_var;
 class AST_proto;
 class AST_func;
 
+class AST_storage;
+
 class Node {
 public:
     Node():ir(NULL){}
+    Node(Fvalue* r):ir(r){}
     class Visitor{
     public:
 //        virtual void visit(Node* n) = 0;
@@ -65,12 +71,20 @@ public:
         }
     };
     virtual void accept(Visitor* v) = 0;
-    virtual Fvalue *code() = 0;
     Fvalue * ir;
     virtual ~Node() {};
 };
 
+class AST_storage : public Node{
+public:
 
+//    void accept(Visitor *v){v->visit(this);}
+
+};
+class AST_typename : public Node{
+public:
+  //  void accept(Visitor *v){v->visit(this);}
+};
 class AST_expr_list: public Node{
 public:
 	Node* expr;
@@ -82,7 +96,6 @@ public:
 		next = e;
 		lists.push_back(e);
 	}
-	Fvalue * code();
 
   void accept(Visitor* v){
 
@@ -95,7 +108,6 @@ class AST_integer: public Node{
     int var_value;
     
   AST_integer(int val):var_value(val){}
-    virtual Fvalue *code();
 
   void accept(Visitor* v){
     v->visit(this);
@@ -114,7 +126,6 @@ class AST_var	: public Node{
 	}
 #endif
   }
-    virtual Fvalue *code();
   void accept(Visitor* v){
     v->visit(this);
   }    
@@ -124,7 +135,6 @@ class AST_bin   : public Node{
     char op;
     Node *LHS, *RHS;
   AST_bin(char op, Node *lhs, Node *rhs):op(op),LHS(lhs),RHS(rhs){}
-    virtual Fvalue *code();
   void accept(Visitor* v){
     v->visit(this);
   }        
@@ -134,7 +144,6 @@ public:
 	Node *RHS;
 	Fstring   lhs;
 AST_assignment(Node*v, Node *rhs):RHS(rhs),lhs(((AST_var*)v)->var_id){}
-	virtual Fvalue* code();
   void accept(Visitor* v){
     v->visit(this);
   }
@@ -144,7 +153,6 @@ class AST_call  : public Node{
     Fstring name;
     std::vector<Node*> args;
   AST_call(const Fstring &func, std::vector<Node*> args):name(func), args(args){}
-    virtual Fvalue *code();
   void accept(Visitor* v){
     v->visit(this);
   }
@@ -154,15 +162,14 @@ public:
 	Fstring decl_id;
 	AST_declare(){}
 	~AST_declare(){}
-	virtual Fvalue *code(){};
-    	virtual void	set_name(Fstring str){
-    		decl_id = str;
-    	}
+	virtual void	set_name(Fstring str){
+		decl_id = str;
+	}
 	virtual Fstring get_name(){return decl_id;}  
 
-  void accept(Visitor* v){
-    v->visit(this);
-  }  
+	void accept(Visitor* v){
+		v->visit(this);
+	}  
 };
 
 class AST_args  : public AST_declare{
@@ -188,18 +195,16 @@ public:
 
 class AST_local_var: public AST_declare{
 public:
-	AST_local_var(AST_declare *s,Fvalue *v=NULL);
-	Fvalue *code();
-  void accept(Visitor* v){
-    v->visit(this);
-  }
+	AST_local_var(AST_declare *s, Node*v=NULL);
+	void accept(Visitor* v){
+		v->visit(this);
+	}
 };
 class AST_proto : public AST_declare{//声明一个函数
 public:
 	Fstring name;	//函数名
 	std::vector<Fstring> args;	//参数表
 	AST_proto(const Fstring &fname,	const std::vector<Fstring> &args):name(fname),args(args){}
-	Function *code();
   void accept(Visitor *v){
       v->visit(this);
   }
@@ -210,10 +215,6 @@ public:
 	Node  *body;
 	Fvalue	  *ret_value;
 	AST_func(Node* proto, Node* body): proto(proto),body(body){}
-  Fvalue *code(){
-    coder(NULL);
-  }
-	Function *coder(Fvalue *ret_value = NULL);
   void accept(Visitor* v){
     v->visit(this);
   }       
@@ -253,6 +254,7 @@ public:
     void visit(AST_local_var *p);
     void visit(AST_proto *p);
     void visit(AST_func *p);
+
 };
 
 

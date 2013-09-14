@@ -170,19 +170,27 @@ multiplicative_expression
 	: cast_expression{
 		$$ = $1;
 	}
-	| multiplicative_expression '*' cast_expression
-	| multiplicative_expression '/' cast_expression
-	| multiplicative_expression '%' cast_expression
+	| multiplicative_expression '*' cast_expression {
+		$$ = new AST_bin('*', $1, $3);
+	}
+	| multiplicative_expression '/' cast_expression {
+		$$ = new AST_bin('/', $1, $3);
+	}
+	| multiplicative_expression '%' cast_expression {
+		$$ = new AST_bin('%', $1, $3);
+	}
 	;
 
 additive_expression
 	: multiplicative_expression{
 		$$ = $1;
 	}
-	| additive_expression '+' multiplicative_expression {check("计算_加法");
-		$$ = new AST_bin('+',$1,$3);
+	| additive_expression '+' multiplicative_expression {
+		$$ = new AST_bin('+', $1, $3);
 	}
-	| additive_expression '-' multiplicative_expression
+	| additive_expression '-' multiplicative_expression {
+		$$ = new AST_bin('-', $1, $3);
+	}
 	;
 
 shift_expression
@@ -298,15 +306,20 @@ constant_expression
 declaration
 	: declaration_specifiers ';' {;}//声明前缀 类型 int 等
 	| declaration_specifiers init_declarator_list ';' {
+		/* 从 decl_specifiers里提取type_specifier */
 		$$ = $2;
 	
 	;} //完整声明 包含变量名 或 初值
 	;
 
-declaration_specifiers
-	: storage_class_specifier
+declaration_specifiers   // 各种声明类型
+	: storage_class_specifier{
+
+	}
 	| storage_class_specifier declaration_specifiers
-	| type_specifier {;}//int long etc
+	| type_specifier {
+		/* int var 里的 int */
+	}//int long etc
 	| type_specifier declaration_specifiers {;}
 	| type_qualifier
 	| type_qualifier declaration_specifiers
@@ -324,9 +337,12 @@ init_declarator_list
 init_declarator
 	: declarator  {check("声明");
 		//$$ = $1; //ast_declare	
-		$$ = new AST_local_var($1,NULL);
+		$$ = new AST_local_var($1, NULL);
 	}
-	| declarator ASSIGN initializer {check("声明_assign");}
+	| declarator ASSIGN initializer {
+		check("声明_assign");
+		$$ = new AST_local_var($1, $3);
+	}
 	;
 
 storage_class_specifier
@@ -429,13 +445,15 @@ declarator
 	;
 
 
-direct_declarator
+direct_declarator /* 代表所有声明语句中的变量 */
 	: IDENTIFIER {
 		check("identifier_declartor");
 		$$ = new AST_declare;
 		$$->set_name($1);
 	}
-	| '(' declarator ')' {check("1");}
+	| '(' declarator ')' {
+		check("函数指针_声明");
+	}/* 下面都是数组声明 */
 	| direct_declarator '[' type_qualifier_list assignment_expression ']'{check("1");}
 	| direct_declarator '[' type_qualifier_list ']'{check("1");}
 	| direct_declarator '[' assignment_expression ']'{check("1");}
@@ -448,7 +466,7 @@ direct_declarator
 		check("函数_声明");
 
 		$$ = new AST_proto($1->get_name(),$3->get_args());
-		
+
 	
 	}
 	| direct_declarator '(' identifier_list ')'{check("1");}
@@ -470,7 +488,7 @@ type_qualifier_list
 
 parameter_type_list
 	: parameter_list {
-	$$ = $1;
+		$$ = $1;
 	}
 	| parameter_list ',' ELLIPSIS {$$ = $1;}
 	;
@@ -500,12 +518,12 @@ identifier_list
 	| identifier_list ',' IDENTIFIER
 	;
 
-type_name
+type_name /* 去掉变量的声明，仅剩下类型信息 */
 	: specifier_qualifier_list
 	| specifier_qualifier_list abstract_declarator
 	;
 
-abstract_declarator
+abstract_declarator /* 就是* */
 	: pointer
 	| direct_abstract_declarator
 	| pointer direct_abstract_declarator
@@ -525,8 +543,10 @@ direct_abstract_declarator
 	| direct_abstract_declarator '(' parameter_type_list ')'
 	;
 
-initializer
-	: assignment_expression
+initializer /* =的右端，或struct内的初始化 */
+	: assignment_expression{
+		$$ = $1;
+	}
 	| '{' initializer_list '}'
 	| '{' initializer_list ',' '}'
 	;
@@ -547,9 +567,9 @@ designator_list
 	| designator_list designator
 	;
 
-designator
+designator 
 	: '[' constant_expression ']'
-	| '.' IDENTIFIER
+	| '.' IDENTIFIER /* C++ 已经废弃了这种.name = xx的赋值方式 */
 	;
 
 statement

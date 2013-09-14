@@ -8,7 +8,7 @@ LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs co
 	-D LLVM_VERSION=${LLVM_VERSION}
 
 CC=clang++
-objs:= parse.tab.o lex.yy.o main.o
+objs:= parse.tab.o lex.yy.o ir.o main.o
 all: parse ${objs} link
 parse: token.l parse.y
 	flex  token.l
