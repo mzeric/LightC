@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include "common.h"
 
+#include "ast.h"
+using namespace lc;
 //#define INT2VALUE(x) ConstantInt::get(getGlobalContext(),APInt(32,(x)))
 extern "C" void A_EXP_(int,int,char*);
 extern "C" int yyparse(void);
@@ -35,7 +37,7 @@ extern "C" void yyerror(char const *s)
     QualType	*ast_qual;
     StorType	*ast_stor;
     AST_expr_list    *ast_expr_list;
-    AST_declare *ast_declare;
+    AST_decl 	*ast_decl;
     AST_args    *ast_args;
     AST_func	*ast_func;  //func definition
     
@@ -60,12 +62,12 @@ extern "C" void yyerror(char const *s)
 %token <num> CONSTANT_INT
 %token <id> IDENTIFIER
 %type <num> assignment_operator 
-%type <ast_node> function_definition
-%type <ast_declare> declarator
-%type <ast_declare> direct_declarator
-%type <ast_args>   parameter_type_list
-%type <ast_args>   parameter_list
-%type <ast_declare>   parameter_declaration
+%type <ast_node> 	function_definition
+%type <ast_decl> 	declarator
+%type <ast_decl> 	direct_declarator
+%type <ast_args>   	parameter_type_list
+%type <ast_args>   	parameter_list
+%type <ast_decl>	parameter_declaration
 %type <ast_node>    compound_statement 
 
 %type <ast_node>    primary_expression
@@ -88,8 +90,8 @@ extern "C" void yyerror(char const *s)
 %type <ast_node>    expression
 %type <ast_node>    constant_expression
 
-%type <ast_declare> init_declarator
-%type <ast_declare> init_declarator_list
+%type <ast_decl> init_declarator
+%type <ast_decl> init_declarator_list
 
 %type <ast_node>    initializer
 %type <ast_node>    statement
@@ -98,7 +100,7 @@ extern "C" void yyerror(char const *s)
 %type <ast_expr_list>    block_item_list
 
 %type <ast_node>    declaration
-%type <ast_qual>	declaration_specifiers
+%type <ast_type>	declaration_specifiers
 %type <ast_type>	type_specifier
 %type <ast_qual>	type_qualifier
 %type <ast_qual>	type_qualifier_list
@@ -330,7 +332,7 @@ declaration_specifiers   // 各种声明类型
 	| storage_class_specifier declaration_specifiers
 	| type_specifier {
 		/* int var 里的 int */
-		//$$ = new QualType($1, 0);
+		$$ = $1;
 		
 	}//int long etc or int const
 	| type_specifier declaration_specifiers {
@@ -339,12 +341,15 @@ declaration_specifiers   // 各种声明类型
 		std::cout << "hello int ***" << std::endl;
 	}
 	| type_qualifier {
-		$$ = $1;
+		//$$ = new QualType($1);
 		std::cout << "isConst: " << $1->hasConst() << std::endl;
 	}
 	| type_qualifier declaration_specifiers{
-		//$$ = $1->add($2);
-		std::cout << "isConst2: " << $1->hasConst() << std::endl;
+		std::cout << "isQual: " << $1->ID << std::endl;
+		$2->addQualifier(*$1);
+		$$ = $2;
+		std::cout << "isQual: " << $2->qualifier.ID << std::endl;
+		delete $1;
 	}
 	| function_specifier
 	| function_specifier declaration_specifiers
@@ -378,10 +383,12 @@ storage_class_specifier
 
 type_specifier
 	: VOID
-	| CHAR
+	| CHAR {
+		$$ = new BuiltinType(BuiltinType::Char);
+	}
 	| SHORT
 	| INT {
-		//$$ = new BuiltinType(BuiltinType::Integer);
+		$$ = new BuiltinType(BuiltinType::Integer);
 		//$$->ast_type = llvm::Type::getInt32Ty(*llvm_context);
 		//std::cout << "hello type_specifier" << std::endl;
 	}
@@ -459,16 +466,13 @@ enumerator
 
 type_qualifier
 	: CONST{
-				
-		//$$ = new QualType(QualType::Qualifier_Const);
-		std::cout<<"get const" << std::endl;
+		$$ = new QualType(QualType::Qualifier_Const);
 	}
 	| RESTRICT{
-		//$$ = new QualType(QualType::Qualifier_Restrict);
+		$$ = new QualType(QualType::Qualifier_Restrict);
 	}
 	| VOLATILE{
-
-		//$$ = new QualType(QualType::Qualifier_Volatile);
+		$$ = new QualType(QualType::Qualifier_Volatile);
 	}
 	;
 
@@ -487,7 +491,7 @@ declarator
 direct_declarator /* 代表所有声明语句中的变量 */
 	: IDENTIFIER {
 		check("identifier_declartor");
-		$$ = new AST_declare;
+		$$ = new AST_decl;
 		$$->set_name($1);
 	}
 	| '(' declarator ')' {

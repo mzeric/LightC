@@ -59,7 +59,7 @@ void A_fatal(const char *str,int e){
     
 ////////////////////////////////////////////////////////////////////////////
 /////////////////// AST_declare->AST_local_var
-AST_local_var::AST_local_var(AST_declare *s, Node *v ){
+AST_local_var::AST_local_var(AST_decl *s, Node *v ){
 		if(v == NULL){
 			NamedUnValues[s->decl_id] =  NULL;
 
@@ -128,8 +128,8 @@ void CodegenVisitor::visit(AST_bin *p){
 
 		}
 }
-void CodegenVisitor::visit(AST_declare *p){
-	debug_visit("AST_declare");
+void CodegenVisitor::visit(AST_decl *p){
+	debug_visit("AST_decl");
 }
 void CodegenVisitor::visit(AST_call *p){
 	debug_visit("visit AST_call");
@@ -157,8 +157,8 @@ void CodegenVisitor::visit(AST_proto *p){
 		std::cout << "visit proto" << std::endl;
 		std::vector<Type*> int_args(p->args.size(),
 					Type::getInt32Ty(*llvm_context));	//参数类型
-		FunctionType * func_type = 
-			FunctionType::get(Type::getInt32Ty(*llvm_context),//返回值类型
+		llvm::FunctionType * func_type = 
+			llvm::FunctionType::get(Type::getInt32Ty(*llvm_context),//返回值类型
                               int_args,false);
 		Function	* func = Function::Create(func_type,Function::ExternalLinkage,p->name,TheModule);
 		if(func){

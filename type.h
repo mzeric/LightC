@@ -20,9 +20,10 @@
 #include <iostream>
 #include <assert.h>
 
+#include "common.h"
+#include "ast.h"
 
-typedef llvm::Value Fvalue;
-typedef std::string Fstring;
+
 extern llvm::LLVMContext* llvm_context;
 
 namespace lc{
@@ -198,49 +199,41 @@ public:
 	TypeImplement* instance;
 };
 
-class StorType {
-	uint32_t ID;
-public:
-	enum Type_Storage {
-		Storage_None = 0,
-		Storage_Typedef,
-		Storage_Static,
-		Storage_Extern,
-		Storage_Auto,
-		Storage_Regisiter,
-	};
-//    void accept(Visitor *v){v->visit(this);}
-	void addStorage(Type_Storage tid){
-		ID = ((1 << tid) & 0xFF) | (ID & 0xFFFFFF00);
-	}
+
+
+class ExtTypeBase{
 
 };
+// do not need ExtQuals just for C
+class ExtQualType	: public ExtTypeBase, public llvm::FoldingSetNode{};
+/*
+	The real something
+*/
 class QualType {
 public:
 	uint32_t ID;
-	union{
-	lc::ASTType* type;
-	lc::ExtQualType* etype;
-	};
+/*
 	typedef llvm::PointerIntPair<
-		llvm::PointerUnion<const ASTType*, const ExtQualType*>, 3> PIe;
-public:
-	enum Type_Qualifier{
-		Qualifier_None = 0,
-		Qualifier_Const= 0x1,
-		Qualifier_Restrict = 0x2,
-		Qualifier_Volatile = 0x4,
+		llvm::PointerUnion<const ASTType*, const ExtQualType*>, 2> PIe;
+*/
+	enum {
+		Qualifier_Const ,
+		Qualifier_Volatile ,
+		Qualifier_Restrict ,
 	};
 public:
-	explicit QualType(unsigned tid):type(NULL){addQualifier(tid);}
-	QualType(ASTType *t, unsigned i):type(t){addQualifier(i);}
-	QualType(ExtQualType *t, unsigned i):etype(t){addQualifier(i);}
+
+public:
+	explicit QualType(unsigned tid):ID(0){addQualifier(tid);}
+	QualType():ID(0){}
+	//QualType(ASTType *t, unsigned i):type(t){addQualifier(i);}
+	
 
 	void addQualifier(unsigned tid) {
-		ID = ID | (1<<tid) ;
+		ID = ID | (1<<tid);
 	}
 	void removeQualifier(unsigned tid){
-		ID = (~(1<<tid) & 0xFF) & (ID & 0xFFFFFF00);
+		ID = ID & (~(1<<tid) );
 	}
 
 	void addVolatile()	{ addQualifier(Qualifier_Volatile); }
@@ -251,39 +244,18 @@ public:
 	bool hasVolatile()	{return ID & (1<<Qualifier_Volatile);}
 	bool hasRestrict()	{return ID & (1<<Qualifier_Restrict);}
 
-	QualType* add(QualType* qt){
-			assert(this->type == NULL || qt->type == NULL);
-			this->ID |= qt->ID;
-			if(this->type == NULL)
-				this->type = qt->type;
-			delete qt;
-			return this;
+	void add(QualType qt){
+			this->ID |= qt.ID;
 	}
   //  void accept(Visitor *v){v->visit(this);}
 };
-class ExtTypeBase{
-
-	ExtTypeBase(const ASTType *base, QualType cannon):
-		BaseType(base), CannonicalType(cannon){}
-
-	const ASTType const *BaseType;
-	QualType CannonicalType;
-
-	friend class ASTType;
-};
-// do not need ExtQuals just for C
-class ExtQualType	: public ExtTypeBase, public llvm::FoldingSetNode{};
-/*
-	The real something
-*/
 class ASTType	: public ExtTypeBase {
-
 public:
-	ASTType():ExtTypeBase(this, QualType(this,0)){}
-	ASTType(QualType canon):
-		ExtTypeBase(this, canon){
-
-	}
+	llvm::Type *ast_type;
+	QualType qualifier;
+public:
+	ASTType(){}
+	
 	/*
 	void setPrimitiveType(TypeBuiltin tid){
 		switch(tid){
@@ -295,8 +267,7 @@ public:
 		}
 	}
 	*/
-	llvm::Type *ast_type;
-
+	
 
 	class ArrayTypeBits{};
 	class BuiltinTypeBits{unsigned kind;};
@@ -313,12 +284,40 @@ public:
 		ReferenceTypeBits ReferenceBits;
 	};
 
-
+	void addQualifier(QualType qt){
+		qualifier.add(qt);
+	}
 
 	bool isInteger()const{
 		//if (const BuiltinType *bt = llvm::dyn_cast<BuiltinType>(CannonicalType)){
 	//		return bt->getKind() == BuiltinType::Integer;
 	//	}
+	}
+
+};
+
+class StorType 	:public ASTType{
+	uint32_t ID;
+	ASTType *canon;
+public:
+	enum Type_Storage {
+		Storage_None = 0,
+		Storage_Typedef = 0x1,
+		Storage_Static  = 0x2,
+		Storage_Extern	= 0x4,
+		Storage_Auto	= 0x8,
+		Storage_Regisiter	= 0x10,
+	};
+	StorType(unsigned tid, ASTType* type):canon(NULL){
+		if (tid == Storage_Typedef)
+			canon = type;
+	}
+//    void accept(Visitor *v){v->visit(this);}
+	void addStorage(unsigned tid){
+		ID = ID | (1 << tid);
+	}
+	void removeStorage(unsigned tid){
+		ID = ID & ~(1<< tid);
 	}
 
 };
@@ -328,6 +327,7 @@ public:
 	BuiltinType(){}
 	explicit BuiltinType(unsigned t):tid(t){}
 	enum{
+		None = 0,
 		Bool,
 		Char,
 		Integer,
@@ -346,6 +346,23 @@ class FunctionProtoType: public FunctionType{
 class ParentType	: public ASTType{
 
 };
+
+class SymbolTable{
+public:
+	class SymbolInfo{
+	public:
+		SymbolInfo():isTypeName(false),
+			value(NULL),
+			node(NULL)
+			{}
+		bool isTypeName;
+		llvm::Value *value;
+		Node *node;
+	};
+	SymbolTable(){}
+
+	std::map<std::string, SymbolInfo*> Info;
+};
 class ASTContext{
 private:
 	llvm::BumpPtrAllocator BumpAlloc;
@@ -357,6 +374,8 @@ public:
 	void* Allocate(unsigned size, unsigned align = 8){
 		return BumpAlloc.Allocate(size, align);
 	}
+
+	std::list<SymbolTable*> List;
 };
 
 
