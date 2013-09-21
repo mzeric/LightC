@@ -2,7 +2,7 @@
 
 #include <stdio.h>
 #include "common.h"
-	
+
 //#define INT2VALUE(x) ConstantInt::get(getGlobalContext(),APInt(32,(x)))
 extern "C" void A_EXP_(int,int,char*);
 extern "C" int yyparse(void);
@@ -31,6 +31,9 @@ extern "C" void yyerror(char const *s)
     std::string *string;
     std::vector<Fstring> *parameter;
     Node		*ast_node;
+    ASTType		*ast_type;
+    QualType	*ast_qual;
+    StorType	*ast_stor;
     AST_expr_list    *ast_expr_list;
     AST_declare *ast_declare;
     AST_args    *ast_args;
@@ -95,6 +98,11 @@ extern "C" void yyerror(char const *s)
 %type <ast_expr_list>    block_item_list
 
 %type <ast_node>    declaration
+%type <ast_qual>	declaration_specifiers
+%type <ast_type>	type_specifier
+%type <ast_qual>	type_qualifier
+%type <ast_qual>	type_qualifier_list
+
 
 %%
 
@@ -304,10 +312,13 @@ constant_expression
 	;
 
 declaration
-	: declaration_specifiers ';' {;}//声明前缀 类型 int 等
+	: declaration_specifiers ';' {
+		//$$ = $1;
+	}//声明前缀 类型 int 等
 	| declaration_specifiers init_declarator_list ';' {
 		/* 从 decl_specifiers里提取type_specifier */
 		$$ = $2;
+	//	$$->type= $1->ast_type;
 	
 	;} //完整声明 包含变量名 或 初值
 	;
@@ -319,10 +330,22 @@ declaration_specifiers   // 各种声明类型
 	| storage_class_specifier declaration_specifiers
 	| type_specifier {
 		/* int var 里的 int */
-	}//int long etc
-	| type_specifier declaration_specifiers {;}
-	| type_qualifier
-	| type_qualifier declaration_specifiers
+		//$$ = new QualType($1, 0);
+		
+	}//int long etc or int const
+	| type_specifier declaration_specifiers {
+		//$2->type = $1;
+		//$$ = $2;
+		std::cout << "hello int ***" << std::endl;
+	}
+	| type_qualifier {
+		$$ = $1;
+		std::cout << "isConst: " << $1->hasConst() << std::endl;
+	}
+	| type_qualifier declaration_specifiers{
+		//$$ = $1->add($2);
+		std::cout << "isConst2: " << $1->hasConst() << std::endl;
+	}
 	| function_specifier
 	| function_specifier declaration_specifiers
 	;
@@ -357,9 +380,16 @@ type_specifier
 	: VOID
 	| CHAR
 	| SHORT
-	| INT
+	| INT {
+		//$$ = new BuiltinType(BuiltinType::Integer);
+		//$$->ast_type = llvm::Type::getInt32Ty(*llvm_context);
+		//std::cout << "hello type_specifier" << std::endl;
+	}
 	| LONG
-	| FLOAT
+	| FLOAT {
+//		$$ = new ASTType();
+//		$$->ast_type = llvm::Type::getFloatTy(*llvm_context);
+	}
 	| DOUBLE
 	| SIGNED
 	| UNSIGNED
@@ -428,9 +458,18 @@ enumerator
 	;
 
 type_qualifier
-	: CONST
-	| RESTRICT
-	| VOLATILE
+	: CONST{
+				
+		//$$ = new QualType(QualType::Qualifier_Const);
+		std::cout<<"get const" << std::endl;
+	}
+	| RESTRICT{
+		//$$ = new QualType(QualType::Qualifier_Restrict);
+	}
+	| VOLATILE{
+
+		//$$ = new QualType(QualType::Qualifier_Volatile);
+	}
 	;
 
 function_specifier
@@ -440,7 +479,7 @@ function_specifier
 declarator
 	: pointer direct_declarator
 	| direct_declarator {
-	$$ = $1;
+		$$ = $1;
 	}
 	;
 
@@ -481,8 +520,15 @@ pointer
 	;
 
 type_qualifier_list
-	: type_qualifier
-	| type_qualifier_list type_qualifier
+	: type_qualifier{
+		$$ = $1;
+	}
+	| type_qualifier_list type_qualifier{
+		/*
+			Only Support Last One Qualifier
+		*/
+		$$ = $2;
+	}
 	;
 
 
@@ -505,7 +551,8 @@ parameter_list
 	;
 
 parameter_declaration
-	: declaration_specifiers declarator{check("参数");// 类型 + 变量
+	: declaration_specifiers declarator{
+			check("参数");// 类型 + 变量
 			$$ =  $2;
 			//$2[strlen($2)-1]='\0';
 	}

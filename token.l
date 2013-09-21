@@ -66,7 +66,13 @@ int lvc_yyleng;
 
 {L}({L}|{D})*		{ count(); yylval.id = yytext;
 				  lvc_yyleng = yyleng;
-				return(IDENTIFIER);}
+				/* 
+					type vs variable name-ambiguity 
+					handled by lookup Symbol-Table
+					so, we need a declcontext;
+				*/
+				return(IDENTIFIER);
+				}
 
 0[xX]{H}+{IS}?		{ count(); return(CONSTANT); }
 0{D}+{IS}?		{ count(); return(CONSTANT); }

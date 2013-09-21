@@ -6,8 +6,15 @@
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
-#include <llvm/Analysis/Verifier.h>
 #include <llvm/IR/IRBuilder.h>
+#include <llvm/IR/TypeBuilder.h>
+
+#include <llvm/IRReader/IRReader.h>
+#include <llvm/Analysis/Verifier.h>
+#include <llvm/Support/Allocator.h>
+#include <llvm/ADT/PointerIntPair.h>
+#include <llvm/ADT/PointerUnion.h>
+
 #else
 #include <llvm/DerivedTypes.h>
 #include <llvm/LLVMContext.h>
@@ -17,10 +24,11 @@
 #endif
 
 #include <iostream>
+#include "type.h"
 
 using namespace llvm;
-typedef Value Fvalue;
-typedef std::string Fstring;
+using namespace lc;
+
 
 extern LLVMContext* llvm_context;
 extern struct Module *TheModule;
@@ -32,6 +40,13 @@ void A_fatal(const char *str,int e = 1);
 #define debug_visit(x) std::cout << "visit " << x << std::endl;
 #define printf printf
 //static std::map<std::string, Value*> NamedValues;
+
+struct IRContext{
+  LLVMContext *context;
+  struct Module *TheModule;
+  IRBuilder<>  *Builder;
+};
+extern struct IRContext ir_context;
 
 class AST_func;
 class AST_integer;
@@ -46,7 +61,7 @@ class AST_proto;
 class AST_func;
 
 class AST_storage;
-
+class NodeType;
 class Node {
 public:
     Node():ir(NULL){}
@@ -65,26 +80,15 @@ public:
         virtual void visit(AST_local_var *n) = 0;
         virtual void visit(AST_proto *n) = 0;
 
-        void access(Node *n){
-          if(!n->ir)
-            n->accept(this);
-        }
     };
     virtual void accept(Visitor* v) = 0;
-    Fvalue * ir;
     virtual ~Node() {};
-};
-
-class AST_storage : public Node{
 public:
-
-//    void accept(Visitor *v){v->visit(this);}
-
+    Fvalue * ir;
+    Type *type;
 };
-class AST_typename : public Node{
-public:
-  //  void accept(Visitor *v){v->visit(this);}
-};
+
+
 class AST_expr_list: public Node{
 public:
 	Node* expr;
@@ -224,11 +228,7 @@ class CodegenVisitor : public Node::Visitor{
 public:
 //    void visit(Node *n){}// just pass the compile
 
-    void visit(AST_integer *p){
-        std::cout << "visit int" <<std::endl;
-        p->ir = ConstantInt::get(*llvm_context,APInt(32,p->var_value));
 
-    }
     void visit(AST_expr_list *p){
           debug_visit("expr_list");
       std::vector<AST_expr_list*>::iterator iter = (p->lists).begin();
@@ -247,6 +247,7 @@ public:
       }
     }
     void visit(AST_var *p);
+    void visit(AST_integer *p);
     void visit(AST_assignment *p);
     void visit(AST_bin *p);
     void visit(AST_call *p);
@@ -254,6 +255,7 @@ public:
     void visit(AST_local_var *p);
     void visit(AST_proto *p);
     void visit(AST_func *p);
+
 
 };
 

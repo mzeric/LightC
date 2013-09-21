@@ -1,6 +1,5 @@
 #include "common.h"
-
-	int main(){
+	int main(int argc, char * const *argv){
         
 		LLVMContext &Context = getGlobalContext();
 		llvm_context = &Context;
@@ -50,6 +49,19 @@
 		
         
 		TheModule->dump();
+		SMDiagnostic diag;
+    	//Builder.SetInsertPoint(func_block);
+    	ASTContext astc;
+    	llvm::BumpPtrAllocator bp;
+		ASTType * ta = (ASTType*)bp.Allocate(sizeof(ASTType),4);
+    	typedef llvm::PointerIntPair<lc::ASTType*, 3> PU;
+    	PU vl(ta,5);
+    	std::cout << ta <<" restore : " << vl.getInt() << " "<<vl.getPointer() << std::endl;
+    	#include <llvm/Support/Alignof.h>
+
+    	std::cout << "alignof int " << alignOf<lc::ASTType*>()<< std::endl;
+
+		//ModuleTest->dump();
 		return 0;
         
         

@@ -30,7 +30,9 @@ IRBuilder<> Builder(getGlobalContext());
 typedef std::map<std::string, Node*> SymTable;
 SymTable NamedValues;//函数内命名空间
 std::map<std::string, Node*> NamedUnValues;//函数内命名空间
-    
+
+struct IRContext ir_context;
+
 class TopContext{
 private:
 	TopContext(){}
@@ -72,6 +74,13 @@ void CodegenVisitor::visit(AST_var* p){
 	Node *V = NamedValues[p->var_id];
 	p->ir = V?V->ir:NULL;
 }
+void CodegenVisitor::visit(AST_integer *p){
+
+    p->ir = ConstantInt::get(*llvm_context,APInt(32,p->var_value));
+    p->type = p->ir->getType();
+    std::cout << "visit int " <<p->ir->getType()->isIntegerTy()<<std::endl;
+}
+
 void CodegenVisitor::visit(AST_assignment *p){
 	debug_visit("AST_assignment");
 		if(p->ir)
