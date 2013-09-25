@@ -4,3 +4,8 @@
 2
 *.ll
 *.swp
+*.pdf
+*.log
+*.aux
+*.sty
+doc/*.gz

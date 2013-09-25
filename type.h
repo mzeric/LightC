@@ -1,32 +1,25 @@
 #ifndef _TYPE_H
 #define _TYPE_H
 
-#if (LLVM_VERSION >= 33)
+
 #include <llvm/IR/DerivedTypes.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <llvm/Analysis/Verifier.h>
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/Support/SourceMgr.h>
-#else
-#include <llvm/DerivedTypes.h>
-#include <llvm/LLVMContext.h>
-#include <llvm/Module.h>
-#include <llvm/Analysis/Verifier.h>
-#include <llvm/Support/IRBuilder.h>
 
-#endif
 
 #include <iostream>
 #include <assert.h>
 
 #include "common.h"
-#include "ast.h"
+//#include "ast.h"
 
 
 extern llvm::LLVMContext* llvm_context;
 
-namespace lc{
+
 class StorType;
 class QualType;
 class ExtQualType;
@@ -39,33 +32,33 @@ enum {
 	TypeAlignmentInBits = 4,
 	TypeAlignment = 1 << 4,
 };
-}
+
 namespace llvm {
   template <typename T>
   class PointerLikeTypeTraits;
   template<>
-  class PointerLikeTypeTraits< ::lc::ASTType*> {
+  class PointerLikeTypeTraits< ::ASTType*> {
   public:
-    static inline void *getAsVoidPointer(::lc::ASTType *P) { return P; } 
-    static inline ::lc::ASTType *getFromVoidPointer(void *P) {
-      return static_cast< ::lc::ASTType*>(P);
+    static inline void *getAsVoidPointer(::ASTType *P) { return P; } 
+    static inline ::ASTType *getFromVoidPointer(void *P) {
+      return static_cast< ::ASTType*>(P);
     }    
-    enum { NumLowBitsAvailable = lc::TypeAlignmentInBits};
+    enum { NumLowBitsAvailable = ::TypeAlignmentInBits};
   };
   template<>
-  class PointerLikeTypeTraits< ::lc::ExtQualType*> {
+  class PointerLikeTypeTraits< ::ExtQualType*> {
   public:
-    static inline void *getAsVoidPointer(::lc::ExtQualType *P) { return P; } 
-    static inline ::lc::ExtQualType *getFromVoidPointer(void *P) {
-      return static_cast< ::lc::ExtQualType*>(P);
+    static inline void *getAsVoidPointer(::ExtQualType *P) { return P; } 
+    static inline ::ExtQualType *getFromVoidPointer(void *P) {
+      return static_cast< ::ExtQualType*>(P);
     }    
-    enum { NumLowBitsAvailable = lc::TypeAlignmentInBits };
+    enum { NumLowBitsAvailable = ::TypeAlignmentInBits };
   };
 
   template <>
-  struct isPodLike<lc::QualType> { static const bool value = true; };
+  struct isPodLike<QualType> { static const bool value = true; };
 }
-namespace lc{
+
 class NodeType{
 public:
   void set_name(const char* str){name = str;}
@@ -121,8 +114,7 @@ public:
 	bool isFloat()	const{return getTypeID() == FloatID;}
 	bool isDouble()	const{return getTypeID() == DoubleID;}
 	bool isFloatingPoint() const {
-		return getTypeID() == FloatID ||
-				getTypeID() == DoubleID;
+		return getTypeID() == FloatID || getTypeID() == DoubleID;
 	}
 	const llvm::fltSemantics &getFltSemantics() const {
 		switch(getTypeID()){
@@ -184,31 +176,9 @@ public:
 	unsigned int getPrimitiveSizeInBits() const;
 
 };
-class TypeImplement{
-public:
-	TypeImplement(){}
-	NodeType *VoidType, *IntegerType, *FloatType, *DoubleType;
-
-	NodeType* getVoid(){  }
-};
-class TypeContext{
-public:
-	TypeContext():instance(new TypeImplement()){
-
-	}
-	TypeImplement* instance;
-};
 
 
 
-class ExtTypeBase{
-
-};
-// do not need ExtQuals just for C
-class ExtQualType	: public ExtTypeBase, public llvm::FoldingSetNode{};
-/*
-	The real something
-*/
 class QualType {
 public:
 	uint32_t ID;
@@ -249,7 +219,7 @@ public:
 	}
   //  void accept(Visitor *v){v->visit(this);}
 };
-class ASTType	: public ExtTypeBase {
+class ASTType {
 public:
 	llvm::Type *ast_type;
 	QualType qualifier;
@@ -347,37 +317,6 @@ class ParentType	: public ASTType{
 
 };
 
-class SymbolTable{
-public:
-	class SymbolInfo{
-	public:
-		SymbolInfo():isTypeName(false),
-			value(NULL),
-			node(NULL)
-			{}
-		bool isTypeName;
-		llvm::Value *value;
-		Node *node;
-	};
-	SymbolTable(){}
-
-	std::map<std::string, SymbolInfo*> Info;
-};
-class ASTContext{
-private:
-	llvm::BumpPtrAllocator BumpAlloc;
-
-public:
-	ASTContext(){
-
-	}
-	void* Allocate(unsigned size, unsigned align = 8){
-		return BumpAlloc.Allocate(size, align);
-	}
-
-	std::list<SymbolTable*> List;
-};
 
 
-}
 #endif

@@ -1,8 +1,16 @@
 #include "common.h"
-	int main(int argc, char * const *argv){
+#include "ast.h"
+#include "type.h"
+using namespace llvm;
+int main(int argc, char * const *argv){
         
 		LLVMContext &Context = getGlobalContext();
 		llvm_context = &Context;
+
+
+		current_ast_context = new ASTContext();
+		current_ast_context->Push();// Gloable Symbol Table;
+
 		TheModule = new Module("cool jit",*llvm_context);
  /*		       
 		std::vector<const Type*> Doubles(2, Type::getDoubleTy(getGlobalContext()));
@@ -51,17 +59,20 @@
 		TheModule->dump();
 		SMDiagnostic diag;
     	//Builder.SetInsertPoint(func_block);
-    	ASTContext astc;
     	llvm::BumpPtrAllocator bp;
 		ASTType * ta = (ASTType*)bp.Allocate(sizeof(ASTType),4);
-    	typedef llvm::PointerIntPair<lc::ASTType*, 3> PU;
+    	typedef llvm::PointerIntPair<ASTType*, 3> PU;
     	PU vl(ta,5);
     	std::cout << ta <<" restore : " << vl.getInt() << " "<<vl.getPointer() << std::endl;
     	#include <llvm/Support/Alignof.h>
 
-    	std::cout << "alignof int " << alignOf<lc::ASTType*>()<< std::endl;
-
+    	std::cout << "alignof  " << alignOf<Type*>()<< std::endl;
+    	BuiltinType *t = new BuiltinType();
+    	//QualType *t = dyn_cast<QualType>(d);
+    	if (dyn_cast<BuiltinType>(t))
+    		std::cout << "get dyn_cast" << std::endl;
 		//ModuleTest->dump();
+
 		return 0;
         
         

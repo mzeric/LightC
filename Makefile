@@ -12,11 +12,11 @@ LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs ) 
 LLVM_LDFLAGS += -I${CLANG_INC}
 
 CC=clang++
-objs:= parse.tab.o lex.yy.o ir.o type.o main.o
+objs:= parser.o lexer.o ir.o ast.o type.o main.o
 all: parse ${objs} link
 parse: token.l parse.y
-	flex  token.l
-	bison parse.y -d
+	flex -o lexer.c token.l
+	bison -d -o parser.c parse.y
 %.o:%.c 
 	@echo CC $<
 	@${CC} -c ${LLVM_CXXFLAGS} $< 

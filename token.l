@@ -10,8 +10,9 @@ IS                      ((u|U)|(u|U)?(l|L|ll|LL)|(l|L|ll|LL)(u|U))
 %{
 #include <stdio.h>
 #include "common.h"
-#include "parse.tab.h"
+#include "ast.h"
 
+#include "parser.h"
 extern "C" int yylex();
 void count(void);
 void comment(void);
@@ -19,6 +20,7 @@ int column = 0;
 extern "C" void yyerror(const char*);
 int lvc_yyleng;
 
+extern ASTContext *current_ast_context;
 %}
 
 %%
@@ -88,7 +90,14 @@ L?'(\\.|[^\\'\n])+'	{ count(); return(CONSTANT); }
 0[xX]{H}+"."{H}*({P})?{FS}?     { count(); return(CONSTANT); }
 
 
-L?\"(\\.|[^\\"\n])*\"	{ count(); return(STRING_LITERAL); }
+L?\"(\\.|[^\\"\n])*\"	{ count();
+							lvc_yyleng = yyleng;
+							/*	string " " around "literal" */
+							yytext[yyleng-1]=0;
+							std::string *str = new std::string(yytext + 1);
+							yylval.string = str;
+							return(STRING_LITERAL); 
+						}
 
 "..."			{ count(); return(ELLIPSIS); }
 ">>="			{ count(); return(RIGHT_ASSIGN); }

@@ -1,0 +1,69 @@
+% !TEX TS-program = xelatex
+% !TEX encoding = UTF-8
+
+% This is a simple template for a XeLaTeX document using the "article" class,
+% with the fontspec package to easily select fonts.
+
+\documentclass[11pt]{article} % use larger type; default would be 10pt
+
+\usepackage{zhfontcfg}
+\setmainfont{Myriad Pro}
+\setCJKmainfont{Hiragino Sans GB}
+
+\usepackage{geometry} % See geometry.pdf to learn the layout options. There are lots.
+\geometry{a4paper} % or letterpaper (US) or a5paper or....
+%\usepackage[parfill]{parskip} % Activate to begin paragraphs with an empty line rather than an indent
+
+\usepackage{graphicx} % support the \includegraphics command and options
+
+\title{Light C Internal}
+\author{ TianXiao Xia}
+\date{} % Activate to display a given date or no date (if empty),
+         % otherwise the current date is printed 
+
+\begin{document}
+\maketitle
+LightC is a ANSI C compiler.  implement with modern compiler-kits: yacc lex llvm. 
+
+为了实践编译原理，解决实际实现中会遇到的问题；希望能做到结构清晰，即使会牺牲些性能
+\section{Architecture}
+
+
+取舍：
+\begin{itemize}
+\item 构造出AST后再生成中间代码，而不是一边parse一边生成
+\item 构造AST时不使用llvm::Type子系统，一是练习，也是方便以后替换掉llvm的东西
+\item 构造AST时完成声明和符号表的处理，AST中的decl节点含有中间代码的类型信息
+\end{itemize}
+
+\section{Grammar of C}
+\begin{itemize}
+\item declaration 一条声明语句，可以是变量声明、函数声明、for循环声明或其他复杂声明
+\item primary 包括变量、整数、字符串等
+\item declarator 声明中得变量，被声明对象
+\end{itemize}
+
+\section{Type subsystem}
+\section{AST internal}
+three kind of AST: Type Decl Stmt
+
+although could just use llvm's Type system,but attemp approach another way
+\subsection{SymbolTable}
+符号表由链表链接
+\begin{itemize}
+\item 在\{\}的进入和退出时执行push和pop
+\item function\_definition 结束时pop
+\item function proto 结束时 push
+\item declaration in for\-loop 时处理和函数处理相同
+\item declaration in block\_item 直接加入当前符号表
+\item declaration 同上（此处是函数外的全局声明）
+\end{itemize}
+
+\section{Error Recovery}
+
+\section{Testing}
+生成的IR代码与clang的IR代码对比，优化选项全部关闭
+
+
+根据llvm 的cpp后端，生成IR产生代码，进行调试
+\end{document}

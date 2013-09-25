@@ -4,7 +4,9 @@
 #include <vector>
 #include <stack>
 #include "common.h"
+#include "ast.h"
 using namespace llvm;
+
 #if 0
 #ifdef _cplusplus
 extern "C" {
@@ -59,6 +61,7 @@ void A_fatal(const char *str,int e){
     
 ////////////////////////////////////////////////////////////////////////////
 /////////////////// AST_declare->AST_local_var
+
 AST_local_var::AST_local_var(AST_decl *s, Node *v ){
 		if(v == NULL){
 			NamedUnValues[s->decl_id] =  NULL;
@@ -69,18 +72,23 @@ AST_local_var::AST_local_var(AST_decl *s, Node *v ){
 		}
 		printf("[AST_local_var::add_v]");
 }
+
 void CodegenVisitor::visit(AST_var* p){
 	debug_visit("ast_var");
 	Node *V = NamedValues[p->var_id];
 	p->ir = V?V->ir:NULL;
+	//p->context->Lookup(p->var_id);
+
 }
 void CodegenVisitor::visit(AST_integer *p){
 
     p->ir = ConstantInt::get(*llvm_context,APInt(32,p->var_value));
-    p->type = p->ir->getType();
+    p->ir_type = p->ir->getType();
     std::cout << "visit int " <<p->ir->getType()->isIntegerTy()<<std::endl;
 }
-
+void CodegenVisitor::visit(AST_literal *p){
+	/* alloc mem for const-string aka string_literal */
+}
 void CodegenVisitor::visit(AST_assignment *p){
 	debug_visit("AST_assignment");
 		if(p->ir)
@@ -150,7 +158,10 @@ void CodegenVisitor::visit(AST_call *p){
 	p->ir = Builder.CreateCall(func,Argsv,"call");
 }
 void CodegenVisitor::visit(AST_local_var *p){
-	std::cout << "AST_local_var " << std::endl;
+	std::cout << "visit AST_local_var " << p << std::endl;
+}
+void CodegenVisitor::visit(Declaration* p){
+	std::cout << "visit Declaration " << p->var<< std::endl;
 }
 void CodegenVisitor::visit(AST_proto *p){
 //		debug_visit("proto");
@@ -199,6 +210,7 @@ void CodegenVisitor::visit(AST_func *p){
     if(p->proto->ir == NULL){
     	p->proto->accept(this);
     }
+std::cout << "visit Func " << p->proto << std::endl;
     Function* func = (Function*)(p->proto->ir);
     if(func == NULL){
         debug_visit("func.NULL");

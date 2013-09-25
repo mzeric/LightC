@@ -2,9 +2,8 @@
 
 #include <stdio.h>
 #include "common.h"
-
 #include "ast.h"
-using namespace lc;
+
 //#define INT2VALUE(x) ConstantInt::get(getGlobalContext(),APInt(32,(x)))
 extern "C" void A_EXP_(int,int,char*);
 extern "C" int yyparse(void);
@@ -29,7 +28,7 @@ extern "C" void yyerror(char const *s)
 %union {
     int num;
     char* id;
-    Value* value;
+    Fvalue* value;
     std::string *string;
     std::vector<Fstring> *parameter;
     Node		*ast_node;
@@ -38,6 +37,7 @@ extern "C" void yyerror(char const *s)
     StorType	*ast_stor;
     AST_expr_list    *ast_expr_list;
     AST_decl 	*ast_decl;
+
     AST_args    *ast_args;
     AST_func	*ast_func;  //func definition
     
@@ -61,6 +61,7 @@ extern "C" void yyerror(char const *s)
 
 %token <num> CONSTANT_INT
 %token <id> IDENTIFIER
+%token <string> STRING_LITERAL
 %type <num> assignment_operator 
 %type <ast_node> 	function_definition
 %type <ast_decl> 	declarator
@@ -99,7 +100,7 @@ extern "C" void yyerror(char const *s)
 %type <ast_node>    block_item
 %type <ast_expr_list>    block_item_list
 
-%type <ast_node>    declaration
+%type <ast_decl>    declaration
 %type <ast_type>	declaration_specifiers
 %type <ast_type>	type_specifier
 %type <ast_qual>	type_qualifier
@@ -109,23 +110,27 @@ extern "C" void yyerror(char const *s)
 %%
 
 primary_expression
-	: IDENTIFIER {check("identifier");
-
-
-	if(lvc_yyleng)
-	$1[lvc_yyleng]='\0';
-	$$ = new AST_var($1); //引用了一个变量(局部),note: AST_xx只是创建AST树,只是一个标记,实际的语义在code()里
-				//此处是往AST里加入一个变量引用节点
-			//	printf("length:%d\n",yylen);
-		printf("%X ",$$);
-	lvc_yyleng = 0;
+	: IDENTIFIER {
+		check("identifier");
+		if(lvc_yyleng)
+		$1[lvc_yyleng]='\0';
+		$$ = new AST_var($1);
+		//引用了一个变量(局部),note: AST_xx只是创建AST树,只是一个标记,实际的语义在visit()里
+		//此处是往AST里加入一个变量引用节点
+		lvc_yyleng = 0;
 	}
-	| CONSTANT_INT {check("CONSTANT_INT");
+	| CONSTANT_INT {
+		check("CONSTANT_INT");
 			
-	$$ = new AST_integer($1);
+		$$ = new AST_integer($1);
 		printf("%X ",$$);
 	}
-	| STRING_LITERAL{check("literal");}
+	| STRING_LITERAL{
+		check("literal");
+
+		$$ = new AST_literal($1);
+		delete $1; /* free the lexer's std::string* */
+	}
 	| '(' expression ')'{check("括号");}
 	;
 
@@ -363,7 +368,8 @@ init_declarator_list
 	;
 
 init_declarator
-	: declarator  {check("声明");
+	: declarator  {
+		check("声明");
 		//$$ = $1; //ast_declare	
 		$$ = new AST_local_var($1, NULL);
 	}
@@ -507,7 +513,7 @@ direct_declarator /* 代表所有声明语句中的变量 */
 	| direct_declarator '[' ']'{check("1");}
 	| direct_declarator '(' parameter_type_list ')' {
 		check("函数_声明");
-
+		check("Push SymbolTable>>>");
 		$$ = new AST_proto($1->get_name(),$3->get_args());
 
 	
@@ -643,8 +649,12 @@ labeled_statement
 compound_statement
 	: '{' '}'
 	| '{' block_item_list '}' {
+		ASTContext *c = new ASTContext();
+		c->Push();
+		$$->context = c;
 		$$ = $2;
 		printf("%X",$2);
+		c->Pop();
 	}
 	;
 
@@ -663,7 +673,8 @@ block_item_list
 	;
 
 block_item
-	: declaration  {check("declaraton from block_item");
+	: declaration  {
+		check("declaraton from block_item");
 		$$ = $1;
 	
 	}
@@ -707,7 +718,7 @@ jump_statement
 	}
 	;
 
-translation_unit
+translation_unit	/*  everything starts here  */
 	: external_declaration
 	| translation_unit external_declaration
 	;
@@ -726,6 +737,7 @@ function_definition
  }
 	| declaration_specifiers declarator compound_statement{
 		check("function_define");
+		check("此时SymbolTable在proto(declrator)==$2里");
 
 //	$2->code();
 
@@ -747,6 +759,7 @@ function_definition
         CodegenVisitor v;
         p->accept(&v);
         $$ = p;
+        //$$->context = $2->context;
 //		((AST_func*)$$)->code();
 
        // $$ = my_func;

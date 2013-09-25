@@ -3,6 +3,7 @@ int _tmain(int a ,int b,int first){
 	const int var;
 //	int ;
 	volatile int c ;
+	char p = "hello";
 /*	for(; c< 10; c++){
 
 
