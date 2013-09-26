@@ -221,7 +221,7 @@ public:
 };
 class ASTType {
 public:
-	llvm::Type *ast_type;
+	llvm::Type *ir_type;
 	QualType qualifier;
 public:
 	ASTType(){}
@@ -263,6 +263,7 @@ public:
 	//		return bt->getKind() == BuiltinType::Integer;
 	//	}
 	}
+	virtual llvm::Type* toIRType() {;}
 
 };
 

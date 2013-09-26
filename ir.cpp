@@ -62,22 +62,7 @@ void A_fatal(const char *str,int e){
 ////////////////////////////////////////////////////////////////////////////
 /////////////////// AST_declare->AST_local_var
 
-AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
-		decl_id = s->decl_id;
-		if(v){
-			init_value = v->ir;
-			decl_node = v;
-		}
-		if(v == NULL){
-			NamedUnValues[s->decl_id] =  NULL;
 
-		}{
-			NamedValues[s->decl_id] = v;
-
-		}
-
-		printf("[AST_local_var::add_v]");
-}
 /*!
 	Read/Need value of the AST_var node
 */
@@ -213,10 +198,10 @@ void CodegenVisitor::visit(AST_proto *p){
 		int i =0;
 		Function::arg_iterator AI;
 		for(AI = func->arg_begin();i<func->arg_size();AI++,i++){
-			AI->setName(p->args[i]);
-			AST_var* var = new AST_var(p->args[i]);
+			AI->setName(p->args[i].first);
+			AST_var* var = new AST_var(p->args[i].first);
 			var->ir = AI;
-			NamedValues[p->args[i]] = var;
+			NamedValues[p->args[i].first] = var;
 		}
 	//	printf("proto:%x\n",func);
 		p->ir = func;

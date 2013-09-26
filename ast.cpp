@@ -8,6 +8,17 @@ ASTContext* getCurrentContext(){
 	return current_ast_context;
 }
 //
+
+AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
+		decl_id = s->decl_id;
+		if(v){
+			init_value = v->ir;
+			decl_node = v;
+		}
+
+		printf("[AST_local_var::add_v]");
+}
+
 void dumpAllContext(){
 	ASTContext *c = current_ast_context;
 	ASTContext::Iterator iter_c = c->begin();

@@ -572,12 +572,12 @@ parameter_list
 	check("Push SymbolTable 函数参数>>>");
 			
 			$$ = new AST_args;
-			$$->add_args($1->declarator->get_name());
+			$$->add_args($1->declarator->get_name(), $1->getInfo());
 			parameter_list_num++;
 	}
 	
 	| parameter_list ',' parameter_declaration{
-			$$->add_args($3->declarator->get_name());
+			$$->add_args($3->declarator->get_name(), $3->getInfo());
 			parameter_list_num++;
 	}
 	;

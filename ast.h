@@ -229,6 +229,7 @@ public:
       assert(false && "What Fuck Are U Thinking ...");
     }
 
+
 };
 class AST_declarator :public AST_decl{//所有声明的基类
 public:
@@ -248,12 +249,13 @@ public:
 };
 class AST_args  : public AST_decl{
 public:
-    std::vector <Fstring> args;
+    typedef std::pair<Fstring, SymbolInfo> T;
+    std::vector <T> args;
         AST_args(){}
-    void add_args(std::string s){
-      args.push_back(s);
+    void add_args(std::string s, SymbolInfo si){
+      args.push_back(T(s, si));
     }
-    std::vector<Fstring> get_args(){
+    std::vector<T> get_args(){
       return args;
     }
   void accept(Visitor* v){v->visit(this);}
@@ -281,21 +283,28 @@ public:
         //    the new context is already created by proto
         //
         SymbolTable* st = context->Current();
-        st->info[d->decl_id].typeName = s;
 
+        st->info[d->decl_id].typeName = specifier;
         if (d->init_value)
           st->info[d->decl_id].value = d->init_value;
+        if (d->decl_node)
+          st->info[d->decl_id].node  = d->decl_node;
 
         dumpAllContext();
     }
+
     void accept(Visitor *v){v->visit(this);}
+    SymbolInfo getInfo(){
+        return context->Current()->info[declarator->decl_id];
+    }
 
 };
 class AST_proto : public AST_declarator{//声明一个函数
 public:
     Fstring name;   //函数名
-    std::vector<Fstring> args;  //参数表
-    AST_proto(const Fstring &fname, const std::vector<Fstring> &args):name(fname),args(args){}
+    std::vector<AST_args::T> args;  //参数表
+
+    AST_proto(const Fstring &fname, const std::vector<AST_args::T> &args):name(fname),args(args){}
   void accept(Visitor *v){
       v->visit(this);
   }
