@@ -37,7 +37,8 @@ extern "C" void yyerror(char const *s)
     StorType	*ast_stor;
     AST_expr_list    *ast_expr_list;
     AST_decl 	*ast_decl;
-
+    AST_declarator *ast_declarator;
+    Declaration *ast_declaration;
     AST_args    *ast_args;
     AST_func	*ast_func;  //func definition
     
@@ -91,8 +92,8 @@ extern "C" void yyerror(char const *s)
 %type <ast_node>    expression
 %type <ast_node>    constant_expression
 
-%type <ast_decl> init_declarator
-%type <ast_decl> init_declarator_list
+%type <ast_declarator> init_declarator
+%type <ast_declarator> init_declarator_list
 
 %type <ast_node>    initializer
 %type <ast_node>    statement
@@ -100,7 +101,7 @@ extern "C" void yyerror(char const *s)
 %type <ast_node>    block_item
 %type <ast_expr_list>    block_item_list
 
-%type <ast_decl>    declaration
+%type <ast_declaration>    declaration
 %type <ast_type>	declaration_specifiers
 %type <ast_type>	type_specifier
 %type <ast_qual>	type_qualifier
@@ -320,11 +321,13 @@ constant_expression
 
 declaration
 	: declaration_specifiers ';' {
-		//$$ = $1;
+		$$ = new Declaration($1, NULL);
 	}//声明前缀 类型 int 等
 	| declaration_specifiers init_declarator_list ';' {
 		/* 从 decl_specifiers里提取type_specifier */
-		$$ = $2;
+		
+		$$ = new Declaration($1, $2);
+		std::cout << "Create Declaration " << $2->decl_id << std::endl;
 	//	$$->type= $1->ast_type;
 	
 	;} //完整声明 包含变量名 或 初值
@@ -364,18 +367,22 @@ init_declarator_list
 	: init_declarator {
 		$$ = $1;  //ast_declare
 	}
-	| init_declarator_list ',' init_declarator
+	| init_declarator_list ',' init_declarator{
+		check("不支持的语法");
+
+	}
 	;
 
 init_declarator
 	: declarator  {
 		check("声明");
 		//$$ = $1; //ast_declare	
-		$$ = new AST_local_var($1, NULL);
+		$$ = new AST_decl_var($1, NULL);
 	}
 	| declarator ASSIGN initializer {
 		check("声明_assign");
-		$$ = new AST_local_var($1, $3);
+		// if initializer is constant, just store within the Fvalue $->ir;
+		$$ = new AST_decl_var($1, $3);
 	}
 	;
 
@@ -497,8 +504,8 @@ declarator
 direct_declarator /* 代表所有声明语句中的变量 */
 	: IDENTIFIER {
 		check("identifier_declartor");
-		$$ = new AST_decl;
-		$$->set_name($1);
+		$$ = new AST_var($1);
+		
 	}
 	| '(' declarator ')' {
 		check("函数指针_声明");
@@ -631,7 +638,7 @@ designator
 
 statement
 	: labeled_statement  {check("块_标签");}
-	| compound_statement
+	| compound_statement {check("块_{}"); $$ = $1;}
 	| expression_statement {check("块_表达式");
 		$$ = $1;
 	}
@@ -667,7 +674,7 @@ block_item_list
 	| block_item_list block_item{check("block_item append");
 		AST_expr_list *t = new AST_expr_list($2);
 		$1->append_expr(t);	
-		printf("append*%X*,%X ",$2,$1->expr);
+		std::cout << "append " << $2 << " " << $1->expr << std::endl;;
 		//$$ = 
 	}
 	;

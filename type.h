@@ -61,8 +61,8 @@ namespace llvm {
 
 class NodeType{
 public:
-  void set_name(const char* str){name = str;}
-  Fstring get_name(void){return name;}
+ // void set_name(const char* str){name = str;}
+ // Fstring get_name(void){return name;}
 public:
     
     enum TypeID {

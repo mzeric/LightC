@@ -42,8 +42,8 @@ class AST_literal;
 class AST_bin;
 class AST_assignment;
 class AST_call;
-class AST_decl;
-class AST_local_var;
+class AST_args;
+class AST_decl_var;
 class Declaration;
 class AST_proto;
 class AST_func;
@@ -59,29 +59,31 @@ extern ASTContextImpl ContextImpl;
 extern ASTContext *current_ast_context;
 
 ASTContext* getCurrentContext();
+void dumpAllContext();
 
 class SymbolTable{
 public:
   class SymbolInfo{
   public:
-    SymbolInfo():TypeName(NULL),
+    SymbolInfo():typeName(NULL),
       value(NULL),
       node(NULL)
       {}
     SymbolInfo(llvm::Value *v):value(v){}
-    ASTType *TypeName;
+    ASTType     *typeName;
     llvm::Value *value;
-    Node *node;
+    Node        *node;
   };
   SymbolTable(){}
 
   std::map<std::string, SymbolInfo> info;
+  typedef std::map<std::string, SymbolInfo>::iterator Iterator;
 };
   
 class ASTContextImpl{
 public:
   std::list<SymbolTable*> list; 
-   
+  typedef std::list<SymbolTable*>::reverse_iterator Iterator;
   llvm::BumpPtrAllocator  BumpAlloc;
    
 };
@@ -91,7 +93,7 @@ class ASTContext{
 public:
   ASTContext():sym_table(NULL),impl(&ContextImpl){}
   ASTContext(ASTContextImpl *r):impl(r){}
-
+  typedef ASTContextImpl::Iterator Iterator;
   void* Allocate(unsigned size, unsigned align = 8){
     return impl->BumpAlloc.Allocate(size, align);
   }
@@ -112,11 +114,19 @@ public:
   bool hasSymbolTable(){
     return sym_table != NULL;
   }
+  Iterator begin(){
+    return impl->list.rbegin();
+  }
+  Iterator end(){
+    return impl->list.rend();
+  }
 
   ASTType* GetType(std::string name){
       ListType::reverse_iterator iter = impl->list.rbegin();
       for(; iter != impl->list.rend(); ++iter ){
-       // if( (*iter)->info[name].TypeName);
+        if( (*iter)->info[name].typeName){
+
+        }
       }
   }
 private:
@@ -141,9 +151,10 @@ public:
         virtual void visit(AST_expr_list* n)  = 0;
         virtual void visit(AST_bin *n)        = 0;
         virtual void visit(AST_assignment *n) = 0;
+        virtual void visit(AST_args *n)       = 0;
         virtual void visit(AST_call *n)       = 0;
-        virtual void visit(AST_decl *n)       = 0;
-        virtual void visit(AST_local_var *n)  = 0;
+     //   virtual void visit(AST_decl *n)       = 0;
+        virtual void visit(AST_decl_var *n)  = 0;
         virtual void visit(Declaration *n)    = 0;
         virtual void visit(AST_func* n)       = 0;
         virtual void visit(AST_proto *n)      = 0;
@@ -183,22 +194,7 @@ class AST_integer: public Node{
   }
 };
 
-class AST_var   : public Node{
-  public:
-    Fstring var_id;
-  AST_var(std::string var_name){
-    var_id = var_name;
-#ifdef LVC_DEBUG
-        {
-        using namespace std;
-            cout<<"var_add_"<<var_name<<"_";    
-    }
-#endif
-  }
-  void accept(Visitor* v){
-    v->visit(this);
-  }    
-};
+
 class AST_literal : public Node{
 public:
   Fstring id;
@@ -206,6 +202,95 @@ public:
 
   void accept(Visitor *v){
     v->visit(this);
+  }
+};
+
+class AST_decl :public Node{
+public:
+    Fstring  decl_id;
+    ASTType *decl_type;
+    Node    *decl_value;
+
+    AST_decl(){}
+    ~AST_decl(){}
+
+    //
+    virtual void    set_name(Fstring str){decl_id = str;}
+    virtual Fstring get_name(){return decl_id;}  
+
+    void accept(Visitor* v){
+      assert(false && "What Fuck Are U Thinking ...");
+    }
+
+};
+class AST_declarator :public AST_decl{//所有声明的基类
+public:
+    Fvalue  *init_value;
+    AST_declarator():init_value(NULL){}
+  
+};
+class AST_var   : public AST_decl{
+public:
+
+  AST_var(std::string var_name){
+    decl_id = var_name;
+    decl_type = NULL;
+  }
+  void accept(Visitor* v){v->visit(this);}
+
+};
+class AST_args  : public AST_decl{
+public:
+    std::vector <Fstring> args;
+        AST_args(){}
+    void add_args(std::string s){
+      args.push_back(s);
+    }
+    std::vector<Fstring> get_args(){
+      return args;
+    }
+  void accept(Visitor* v){v->visit(this);}
+
+};
+
+class AST_decl_var: public AST_declarator{
+public:
+    AST_decl_var(AST_decl *s, Node *v=NULL);
+
+    void accept(Visitor* v){
+        v->visit(this);
+    }
+};
+
+class Declaration: public AST_decl{
+public:
+    AST_declarator  *declarator;
+    ASTType         *specifier;
+    Declaration(ASTType* s, AST_declarator *d):
+      declarator(d),specifier(s){
+
+        // Just creata a SymbolTable for declaration 
+        // while in proto-decl the out-level, 
+        //    the new context is already created by proto
+        //
+        SymbolTable* st = context->Current();
+        st->info[d->decl_id].typeName = s;
+
+        if (d->init_value)
+          st->info[d->decl_id].value = d->init_value;
+
+        dumpAllContext();
+    }
+    void accept(Visitor *v){v->visit(this);}
+
+};
+class AST_proto : public AST_decl{//声明一个函数
+public:
+    Fstring name;   //函数名
+    std::vector<Fstring> args;  //参数表
+    AST_proto(const Fstring &fname, const std::vector<Fstring> &args):name(fname),args(args){}
+  void accept(Visitor *v){
+      v->visit(this);
   }
 };
 
@@ -242,7 +327,7 @@ class AST_assignment:public Node{
 public:
     Node *RHS;
     Fstring   lhs;
-AST_assignment(Node*v, Node *rhs):RHS(rhs),lhs(((AST_var*)v)->var_id){}
+    AST_assignment(Node*v, Node *rhs):RHS(rhs),lhs(((AST_var*)v)->decl_id){}
   void accept(Visitor* v){
     v->visit(this);
   }
@@ -256,80 +341,6 @@ class AST_call  : public Node{
     v->visit(this);
   }
 };
-class AST_decl :public Node{//所有声明的基类
-public:
-    Fstring decl_id;
-    ASTType *decl_type;
-    AST_decl(){}
-    ~AST_decl(){}
-    virtual void    set_name(Fstring str){
-        decl_id = str;
-    }
-    virtual Fstring get_name(){return decl_id;}  
-
-    void accept(Visitor* v){
-        v->visit(this);
-    }  
-};
-
-class AST_args  : public AST_decl{
-public:
-    std::vector <Fstring> args;
-        AST_args(){}
-        void add_args(std::string s){
-#ifdef LVC_DEBUG
-        {
-        using namespace std;
-            cout<<"add_"<<s<<"_";   
-    }
-#endif
-    args.push_back(s);
-        }
-        std::vector<Fstring> get_args(){
-            return args;
-        }
-  void accept(Visitor* v){
-    v->visit(this);
-  }
-};
-
-struct AST_declarator: public AST_decl{
-  Fstring decl_id;
-  ASTType *ext_type;
-};
-
-class AST_local_var: public AST_declarator{
-public:
-    AST_local_var(AST_decl *s, Node *v=NULL);
-    AST_local_var(){}
-    void accept(Visitor* v){
-        v->visit(this);
-    }
-};
-struct AST_decl_var: public AST_declarator{
-
-};
-struct Declaration   : public AST_decl{
-public:
-    AST_declarator  *var;
-    ASTType         *type;
-    Declaration(ASTType* specifier, AST_declarator *declarator):
-      var(declarator),type(specifier){
-
-      }
-    void accetp(Visitor *v){
-      v->visit(this);
-    }
-};
-class AST_proto : public AST_decl{//声明一个函数
-public:
-    Fstring name;   //函数名
-    std::vector<Fstring> args;  //参数表
-    AST_proto(const Fstring &fname, const std::vector<Fstring> &args):name(fname),args(args){}
-  void accept(Visitor *v){
-      v->visit(this);
-  }
-};
 class AST_func: public Node{
 public:
     Node  *proto;
@@ -341,6 +352,7 @@ public:
   }       
        
 };
+
 class CodegenVisitor : public Node::Visitor{
 public:
 //    void visit(Node *n){}// just pass the compile
@@ -359,17 +371,19 @@ public:
           debug_visit("expr_list");
       std::vector<AST_expr_list*>::iterator iter = (p->lists).begin();
 
+      assert(p->expr != NULL);
+      p->expr->accept(this);
       for( ; iter != (p->lists).end(); ++iter){
-        if( (*iter)->expr == NULL){
-         // A_fatal("expr is NULL!\n");
-          break;
-        }
+        assert((*iter)->expr != NULL);
 
-        if((*iter)->expr->ir == NULL)
+
+        if((*iter)->expr->ir == NULL){
+          std::cout<<"visit__" << (*iter)->expr << ":" << (*iter)->expr->ir<<std::endl;
             (*iter)->expr->accept(this);
+
+        }
         p->ir = (*iter)->expr->ir;
       
-
       }
     }
     void visit(AST_var *p);
@@ -377,15 +391,18 @@ public:
     void visit(AST_literal *p);
     void visit(AST_assignment *p);
     void visit(AST_bin *p);
+    void visit(AST_args *p);
     void visit(AST_call *p);
-    void visit(AST_decl *p);
-    void visit(AST_local_var *p);
+//    void visit(AST_decl *p);
+    void visit(AST_decl_var *p);
     void visit(Declaration* p);
     void visit(AST_proto *p);
     void visit(AST_func *p);
 
 
 };
+class DumpASTVisitor: public Node::Visitor{
 
+};
 
 #endif

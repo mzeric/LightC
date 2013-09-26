@@ -1,6 +1,7 @@
 *.tab.*
 *.yy.c
 *.o
+*.out
 2
 *.ll
 *.swp

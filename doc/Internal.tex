@@ -26,6 +26,8 @@
 LightC is a ANSI C compiler.  implement with modern compiler-kits: yacc lex llvm. 
 
 为了实践编译原理，解决实际实现中会遇到的问题；希望能做到结构清晰，即使会牺牲些性能
+
+%%%%
 \section{Architecture}
 
 
@@ -36,14 +38,27 @@ LightC is a ANSI C compiler.  implement with modern compiler-kits: yacc lex llvm
 \item 构造AST时完成声明和符号表的处理，AST中的decl节点含有中间代码的类型信息
 \end{itemize}
 
+\begin{itemize}
+\item 为单条声明语句作准备
+\end{itemize}
+
+\begin{itemize}
+\item 引入轻量级的string代替std::string，类似llvm::StringRef
+
+\end{itemize}
+%%%%
 \section{Grammar of C}
 \begin{itemize}
 \item declaration 一条声明语句，可以是变量声明、函数声明、for循环声明或其他复杂声明
 \item primary 包括变量、整数、字符串等
 \item declarator 声明中得变量，被声明对象
 \end{itemize}
-
+%%%%
 \section{Type subsystem}
+%%%%
+\section{Memory}
+
+%%%%
 \section{AST internal}
 three kind of AST: Type Decl Stmt
 
@@ -59,6 +74,17 @@ although could just use llvm's Type system,but attemp approach another way
 \item declaration 同上（此处是函数外的全局声明）
 \end{itemize}
 
+%globale[ [declaration] proto[ [declaration] func_def[declaration] ] ]
+%%%%
+\section{中间代码}
+
+\subsection{How to represent stack variables}
+declaration分为global var和function var，有不同的生成代码
+
+\begin{itemize}
+\item mutable local variables, same as clang and llvm-gcc
+\end{itemize}
+
 \section{Error Recovery}
 
 \section{Testing}
@@ -66,4 +92,10 @@ although could just use llvm's Type system,but attemp approach another way
 
 
 根据llvm 的cpp后端，生成IR产生代码，进行调试
+
+\section{Index}
+\begin{itemize}
+\item SSA Single Static Assignment subset of CPS
+\item CPS Continuation Pass Style for functional language
+\end{itemize}
 \end{document}

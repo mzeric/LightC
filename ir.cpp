@@ -62,7 +62,11 @@ void A_fatal(const char *str,int e){
 ////////////////////////////////////////////////////////////////////////////
 /////////////////// AST_declare->AST_local_var
 
-AST_local_var::AST_local_var(AST_decl *s, Node *v ){
+AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
+		decl_id = s->decl_id;
+		if(v)
+		init_value = v->ir;
+
 		if(v == NULL){
 			NamedUnValues[s->decl_id] =  NULL;
 
@@ -70,12 +74,13 @@ AST_local_var::AST_local_var(AST_decl *s, Node *v ){
 			NamedValues[s->decl_id] = v;
 
 		}
+
 		printf("[AST_local_var::add_v]");
 }
 
 void CodegenVisitor::visit(AST_var* p){
 	debug_visit("ast_var");
-	Node *V = NamedValues[p->var_id];
+	Node *V = NamedValues[p->decl_id];
 	p->ir = V?V->ir:NULL;
 	//p->context->Lookup(p->var_id);
 
@@ -136,8 +141,8 @@ void CodegenVisitor::visit(AST_bin *p){
 
 		}
 }
-void CodegenVisitor::visit(AST_decl *p){
-	debug_visit("AST_decl");
+void CodegenVisitor::visit(AST_args *p){
+std::cout << "visit AST_args " << p << std::endl;
 }
 void CodegenVisitor::visit(AST_call *p){
 	debug_visit("visit AST_call");
@@ -157,11 +162,13 @@ void CodegenVisitor::visit(AST_call *p){
 		}
 	p->ir = Builder.CreateCall(func,Argsv,"call");
 }
-void CodegenVisitor::visit(AST_local_var *p){
-	std::cout << "visit AST_local_var " << p << std::endl;
+void CodegenVisitor::visit(AST_decl_var *p){
+	std::cout << "visit AST_decl_var " << p << std::endl;
+	// need deal with :
+	// int i = j + 1;
 }
-void CodegenVisitor::visit(Declaration* p){
-	std::cout << "visit Declaration " << p->var<< std::endl;
+void CodegenVisitor::visit(Declaration *p){
+	std::cout << "visit Declaration " << p->declarator<< std::endl;
 }
 void CodegenVisitor::visit(AST_proto *p){
 //		debug_visit("proto");
@@ -237,6 +244,7 @@ std::cout << "visit Func " << p->proto << std::endl;
         verifyFunction(*func);
         func_block->end();
         p->ir = func;
+
         return;
     }
         //定义失败

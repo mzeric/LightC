@@ -1,11 +1,13 @@
 LLVM_ROOT=/opt/llvm/
 CLANG_INC=/Users/walker/work/compiler/llvm-3.3.src/tools/clang/include
+BOOST_INC=/Users/walker/boost_src/
 
 LLVM_VERSION=$(shell ${LLVM_ROOT}/bin/llvm-config --version|sed 's/\.//')
 
 LLVM_CXXFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags ) \
 	-D LLVM_VERSION=${LLVM_VERSION}
-LLVM_CXXFLAGS += -I${CLANG_INC}
+LLVM_CXXFLAGS += -I${CLANG_INC} \
+				-I${BOOST_INC}
 
 LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs ) \
 	-D LLVM_VERSION=${LLVM_VERSION}
@@ -28,4 +30,4 @@ link:
 	@echo Linking ${objs}
 	@${CC} -o 2  ${LLVM_LDFLAGS} ${objs}
 clean:
-	@rm *.o lex.yy.c parse.tab.c parse.tab.h 2 &>/dev/null
+	@rm *.o lexer.c parser.c parser.h 2&>/dev/null
