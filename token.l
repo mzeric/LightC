@@ -122,8 +122,19 @@ L?\"(\\.|[^\\"\n])*\"	{ count();
 "=="			{ count(); return(EQ_OP); }
 "!="			{ count(); return(NE_OP); }
 ";"			{ count(); return(';');	}
-("{"|"<%")		{ count(); return('{'); }
-("}"|"%>")		{ count(); return('}'); }
+("{"|"<%")		{ count(); 
+				/*
+					Ready to Push a Symbol-Table;
+				*/
+				std::cout << "\nPush Symbol-Table  >>>>>>>" <<std::endl;
+				yylval.context = new ASTContext();
+				yylval.context->Push();
+					return(LEFT_BRACE); }
+("}"|"%>")		{ count();
+				std::cout << "\nPop Symbol-Table   <<<<<<<" <<std::endl;
+				dumpAllContext();
+				current_ast_context->Pop();
+				 return(RIGHT_BRACE); }
 ","			{ count(); return(','); }
 ":"			{ count(); return(':'); }
 "="			{ count(); //yylval.id = yytext;

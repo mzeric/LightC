@@ -60,10 +60,7 @@ extern ASTContext *current_ast_context;
 
 ASTContext* getCurrentContext();
 void dumpAllContext();
-
-class SymbolTable{
-public:
-  class SymbolInfo{
+class SymbolInfo{
   public:
     SymbolInfo():typeName(NULL),
       value(NULL),
@@ -74,6 +71,9 @@ public:
     llvm::Value *value;
     Node        *node;
   };
+class SymbolTable{
+public:
+  
   SymbolTable(){}
 
   std::map<std::string, SymbolInfo> info;
@@ -105,12 +105,18 @@ public:
     assert(c != NULL && "Push empty context");
     impl->list.push_back(c->sym_table);
   }
+  void Push(Fstring name, SymbolInfo si){
+    SymbolTable *st = Current();
+    st->info[name] = si;
+  }
   void Pop(){
     impl->list.pop_back();
   }
   SymbolTable* Current(){
     return impl->list.back();
   }
+  SymbolInfo* Lookup(Fstring str);
+
   bool hasSymbolTable(){
     return sym_table != NULL;
   }
@@ -209,7 +215,8 @@ class AST_decl :public Node{
 public:
     Fstring  decl_id;
     ASTType *decl_type;
-    Node    *decl_value;
+    Node    *decl_node;
+    llvm::Value  *init_value;
 
     AST_decl(){}
     ~AST_decl(){}
@@ -225,11 +232,11 @@ public:
 };
 class AST_declarator :public AST_decl{//所有声明的基类
 public:
-    Fvalue  *init_value;
-    AST_declarator():init_value(NULL){}
+
+    AST_declarator(){}
   
 };
-class AST_var   : public AST_decl{
+class AST_var   : public AST_declarator{
 public:
 
   AST_var(std::string var_name){
@@ -284,7 +291,7 @@ public:
     void accept(Visitor *v){v->visit(this);}
 
 };
-class AST_proto : public AST_decl{//声明一个函数
+class AST_proto : public AST_declarator{//声明一个函数
 public:
     Fstring name;   //函数名
     std::vector<Fstring> args;  //参数表
@@ -361,6 +368,7 @@ public:
 
     CodegenVisitor():CodeGenContextImpl(new ASTContextImpl()){
       context = new ASTContext(CodeGenContextImpl);
+
     }
     ~CodegenVisitor(){
       delete CodeGenContextImpl;
@@ -378,7 +386,7 @@ public:
 
 
         if((*iter)->expr->ir == NULL){
-          std::cout<<"visit__" << (*iter)->expr << ":" << (*iter)->expr->ir<<std::endl;
+
             (*iter)->expr->accept(this);
 
         }

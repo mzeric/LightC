@@ -64,9 +64,10 @@ void A_fatal(const char *str,int e){
 
 AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
 		decl_id = s->decl_id;
-		if(v)
-		init_value = v->ir;
-
+		if(v){
+			init_value = v->ir;
+			decl_node = v;
+		}
 		if(v == NULL){
 			NamedUnValues[s->decl_id] =  NULL;
 
@@ -77,17 +78,28 @@ AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
 
 		printf("[AST_local_var::add_v]");
 }
-
+/*!
+	Read/Need value of the AST_var node
+*/
 void CodegenVisitor::visit(AST_var* p){
 	debug_visit("ast_var");
-	Node *V = NamedValues[p->decl_id];
-	p->ir = V?V->ir:NULL;
-	//p->context->Lookup(p->var_id);
+	SymbolInfo *st = context->Lookup(p->decl_id);
+	if(!st){
+		std::cout<<"undefine symbol: "<<p->decl_id<<std::endl;
+		assert("undefine symbol ");
+	}
+	if(st->value)
+		p->ir = st->value;
+	else{
+		st->node->accept(this);
+		p->ir = st->node->ir;
+	}
 
 }
 void CodegenVisitor::visit(AST_integer *p){
-
-    p->ir = ConstantInt::get(*llvm_context,APInt(32,p->var_value));
+	if(p->ir)
+		return;
+   	p->ir = ConstantInt::get(*llvm_context,APInt(32,p->var_value));
     p->ir_type = p->ir->getType();
     std::cout << "visit int " <<p->ir->getType()->isIntegerTy()<<std::endl;
 }
@@ -169,6 +181,7 @@ void CodegenVisitor::visit(AST_decl_var *p){
 }
 void CodegenVisitor::visit(Declaration *p){
 	std::cout << "visit Declaration " << p->declarator<< std::endl;
+
 }
 void CodegenVisitor::visit(AST_proto *p){
 //		debug_visit("proto");
@@ -214,6 +227,7 @@ void CodegenVisitor::visit(AST_func *p){
 //	p->code();
 	std::cout << "visit Func " << p->proto << std::endl;
     NamedValues.clear();//清除名字空间(符号表)
+    //context->Push(p->context);
     if(p->proto->ir == NULL){
     	p->proto->accept(this);
     }

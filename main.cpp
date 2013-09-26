@@ -8,7 +8,7 @@ int main(int argc, char * const *argv){
 		llvm_context = &Context;
 
 
-		current_ast_context = new ASTContext();
+		current_ast_context = new ASTContext();// The default ContextImpl
 		current_ast_context->Push();// Gloable Symbol Table;
 
 		TheModule = new Module("cool jit",*llvm_context);
@@ -55,7 +55,7 @@ int main(int argc, char * const *argv){
   		yyparse();
 		//my_call->code();
 		
-        
+    /*    
 		TheModule->dump();
 		SMDiagnostic diag;
     	//Builder.SetInsertPoint(func_block);
@@ -73,6 +73,7 @@ int main(int argc, char * const *argv){
     		std::cout << "get dyn_cast" << std::endl;
 		//ModuleTest->dump();
 
+	*/
 		return 0;
         
         

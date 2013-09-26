@@ -1,4 +1,5 @@
 /*#include <stdio.h>*/
+int global;
 int _tmain(int a ,int b,int first){
 	const int var;
 //	int ;
@@ -9,10 +10,14 @@ int _tmain(int a ,int b,int first){
 
 
 	}
-*/	c = 100+first;
+*/	c = 100+var;
 
 	var = a +c;
 
 //	return var;
 
+}
+
+int f(char b){
+	int i;
 }

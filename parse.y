@@ -15,6 +15,8 @@ extern char yytext[];
 extern int column;
 extern int lvc_yyleng;
 
+static int parameter_list_num = 0;
+
 extern "C" void yyerror(char const *s)
 {
 	fflush(stdout);
@@ -31,6 +33,7 @@ extern "C" void yyerror(char const *s)
     Fvalue* value;
     std::string *string;
     std::vector<Fstring> *parameter;
+    ASTContext  *context;
     Node		*ast_node;
     ASTType		*ast_type;
     QualType	*ast_qual;
@@ -50,6 +53,8 @@ extern "C" void yyerror(char const *s)
 %token SUB_ASSIGN LEFT_ASSIGN RIGHT_ASSIGN AND_ASSIGN
 %token XOR_ASSIGN OR_ASSIGN TYPE_NAME
 
+%token LEFT_BRACE RIGHT_BRACE
+
 %token TYPEDEF EXTERN STATIC AUTO REGISTER INLINE RESTRICT
 %token CHAR SHORT INT LONG SIGNED UNSIGNED FLOAT DOUBLE CONST VOLATILE VOID
 %token BOOL COMPLEX IMAGINARY
@@ -63,13 +68,16 @@ extern "C" void yyerror(char const *s)
 %token <num> CONSTANT_INT
 %token <id> IDENTIFIER
 %token <string> STRING_LITERAL
+%token <context> LEFT_BRACE
+
+
 %type <num> assignment_operator 
 %type <ast_node> 	function_definition
-%type <ast_decl> 	declarator
-%type <ast_decl> 	direct_declarator
+%type <ast_declarator> 	declarator
+%type <ast_declarator> 	direct_declarator
 %type <ast_args>   	parameter_type_list
 %type <ast_args>   	parameter_list
-%type <ast_decl>	parameter_declaration
+%type <ast_declaration>	parameter_declaration
 %type <ast_node>    compound_statement 
 
 %type <ast_node>    primary_expression
@@ -146,8 +154,8 @@ postfix_expression
 	| postfix_expression PTR_OP IDENTIFIER
 	| postfix_expression INC_OP
 	| postfix_expression DEC_OP
-	| '(' type_name ')' '{' initializer_list '}'
-	| '(' type_name ')' '{' initializer_list ',' '}'
+	| '(' type_name ')' LEFT_BRACE initializer_list RIGHT_BRACE
+	| '(' type_name ')' LEFT_BRACE initializer_list ',' RIGHT_BRACE
 	;
 
 argument_expression_list
@@ -353,10 +361,10 @@ declaration_specifiers   // 各种声明类型
 		std::cout << "isConst: " << $1->hasConst() << std::endl;
 	}
 	| type_qualifier declaration_specifiers{
-		std::cout << "isQual: " << $1->ID << std::endl;
+
 		$2->addQualifier(*$1);
 		$$ = $2;
-		std::cout << "isQual: " << $2->qualifier.ID << std::endl;
+
 		delete $1;
 	}
 	| function_specifier
@@ -422,8 +430,8 @@ type_specifier
 	;
 
 struct_or_union_specifier
-	: struct_or_union IDENTIFIER '{' struct_declaration_list '}'
-	| struct_or_union '{' struct_declaration_list '}'
+	: struct_or_union IDENTIFIER LEFT_BRACE struct_declaration_list RIGHT_BRACE
+	| struct_or_union LEFT_BRACE struct_declaration_list RIGHT_BRACE
 	| struct_or_union IDENTIFIER
 	;
 
@@ -460,10 +468,10 @@ struct_declarator
 	;
 
 enum_specifier
-	: ENUM '{' enumerator_list '}'
-	| ENUM IDENTIFIER '{' enumerator_list '}'
-	| ENUM '{' enumerator_list ',' '}'
-	| ENUM IDENTIFIER '{' enumerator_list ',' '}'
+	: ENUM LEFT_BRACE enumerator_list RIGHT_BRACE
+	| ENUM IDENTIFIER LEFT_BRACE enumerator_list RIGHT_BRACE
+	| ENUM LEFT_BRACE enumerator_list ',' RIGHT_BRACE
+	| ENUM IDENTIFIER LEFT_BRACE enumerator_list ',' RIGHT_BRACE
 	| ENUM IDENTIFIER
 	;
 
@@ -520,8 +528,10 @@ direct_declarator /* 代表所有声明语句中的变量 */
 	| direct_declarator '[' ']'{check("1");}
 	| direct_declarator '(' parameter_type_list ')' {
 		check("函数_声明");
-		check("Push SymbolTable>>>");
+	
+		// AST_proto 复杂添加符号表
 		$$ = new AST_proto($1->get_name(),$3->get_args());
+		$$->context = $3->context;
 
 	
 	}
@@ -552,25 +562,34 @@ type_qualifier_list
 parameter_type_list
 	: parameter_list {
 		$$ = $1;
+		parameter_list_num = 0;
 	}
 	| parameter_list ',' ELLIPSIS {$$ = $1;}
 	;
 
 parameter_list
 	: parameter_declaration {
+	check("Push SymbolTable 函数参数>>>");
+			
 			$$ = new AST_args;
-			$$->add_args($1->get_name());
+			$$->add_args($1->declarator->get_name());
+			parameter_list_num++;
 	}
 	
 	| parameter_list ',' parameter_declaration{
-			$$->add_args($3->get_name());
+			$$->add_args($3->declarator->get_name());
+			parameter_list_num++;
 	}
 	;
 
 parameter_declaration
 	: declaration_specifiers declarator{
 			check("参数");// 类型 + 变量
-			$$ =  $2;
+			if(parameter_list_num == 0){
+				ASTContext *c = new ASTContext();
+				c->Push();
+			}
+			$$ =  new Declaration($1, $2);
 			//$2[strlen($2)-1]='\0';
 	}
 	| declaration_specifiers abstract_declarator
@@ -611,8 +630,8 @@ initializer /* =的右端，或struct内的初始化 */
 	: assignment_expression{
 		$$ = $1;
 	}
-	| '{' initializer_list '}'
-	| '{' initializer_list ',' '}'
+	| LEFT_BRACE initializer_list RIGHT_BRACE
+	| LEFT_BRACE initializer_list ',' RIGHT_BRACE
 	;
 
 initializer_list
@@ -654,14 +673,12 @@ labeled_statement
 	;
 
 compound_statement
-	: '{' '}'
-	| '{' block_item_list '}' {
-		ASTContext *c = new ASTContext();
-		c->Push();
-		$$->context = c;
+	: LEFT_BRACE RIGHT_BRACE
+	| LEFT_BRACE block_item_list RIGHT_BRACE {
+
 		$$ = $2;
-		printf("%X",$2);
-		c->Pop();
+		$$->context = $1;
+
 	}
 	;
 
@@ -764,11 +781,13 @@ function_definition
 
         AST_func* p = new AST_func ($2,$3);
         CodegenVisitor v;
-        p->accept(&v);
+        //p->accept(&v);
         $$ = p;
         //$$->context = $2->context;
 //		((AST_func*)$$)->code();
-
+        $2->context->Pop();
+        check("Pop SymbolTable 函数参数<<<");
+        dumpAllContext();
        // $$ = my_func;
  } //修饰[类型] func(参数表)  语句 
 	;

@@ -66,13 +66,21 @@ although could just use llvm's Type system,but attemp approach another way
 \subsection{SymbolTable}
 符号表由链表链接
 \begin{itemize}
-\item 在\{\}的进入和退出时执行push和pop
+\item 在\{\}的进入和退出时执行push和pop，由词法解析器完成,symboltable放在compound\_statement里
 \item function\_definition 结束时pop
 \item function proto 结束时 push
 \item declaration in for\-loop 时处理和函数处理相同
 \item declaration in block\_item 直接加入当前符号表
 \item declaration 同上（此处是函数外的全局声明）
 \end{itemize}
+
+\subsection{Implement}
+词法分析器在'\{、 \}'时，分别执行push和pop操作
+
+借助于一个标志变量，proto在第一个参数开始的时候push，直到整个函数结束的时候再Pop，对于abstract声明或纯声明未测试
+
+全局有一个context存放全局变量
+
 
 %globale[ [declaration] proto[ [declaration] func_def[declaration] ] ]
 %%%%

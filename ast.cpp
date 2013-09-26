@@ -19,3 +19,18 @@ void dumpAllContext(){
 
 	}
 }
+
+SymbolInfo* ASTContext::Lookup(Fstring str){
+
+	ASTContext::Iterator iter_c = begin();
+	SymbolTable::Iterator iter_t ;
+	for(;iter_c != end(); ++iter_c){
+		iter_t = (*iter_c)->info.begin();
+		for(;iter_t != (*iter_c)->info.end(); ++iter_t){
+			if(iter_t->first == str)
+				return &iter_t->second;
+		}
+
+	}
+	return NULL;
+}
