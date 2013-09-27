@@ -226,6 +226,7 @@ void CodegenVisitor::visit(AST_proto *p){
 */
 void CodegenVisitor::visit(AST_func *p){
 //	p->code();
+	int ret = 0;
 	std::cout << "visit Func " << p->proto << std::endl;
 
     std::cout << "proto.push_namesapce" << std::endl;
@@ -244,44 +245,55 @@ void CodegenVisitor::visit(AST_func *p){
 	debug_visit("begin body code\n");
     BasicBlock *func_block = BasicBlock::Create(*llvm_context,"entry",func);
     Builder.SetInsertPoint(func_block);
-    Fvalue *ret_expr=NULL;
-    
-    if(p->ret_value){
-    
+    Fvalue *ret_expr=ConstantInt::get(getGlobalContext(), APInt(32, 0));
+   
+    /*!
+		Seriously , Push the {->sym_table, Now
+		
+    */
+	if(p->body == NULL){// empyt func body
+		ret = 0;
 
-        ret_expr = p->ret_value;
-    }else{
-        /*!
-			Seriously , Push the {->sym_table, Now
-			
-        */
-    	if(p->body->ir == NULL){
-    		context->Push(p->body->context);
-    		std::cout << "now in {" << std::endl;
-    		//dumpAllContext(context);
-    		p->body->accept(this);
-    	}
-    	debug_visit(p->body->ir);
-        ret_expr=p->body->ir;
-    }
-    if (!ret_expr){
+		goto empty_exit;
+
+	}
+	if(p->body->ir == NULL){
+		context->Push(p->body->context);
+		std::cout << "now in {" << std::endl;
+		//dumpAllContext(context);
+		p->body->accept(this);
+	}
+	debug_visit(p->body->ir);
+
+    if (p->body->ir == NULL){
         //定义失败
         //FIXME
         func->eraseFromParent();
     	p->ir = NULL;
-    	return;
+    	goto clean_exit;
+
     }
 
-        Builder.CreateRet(ret_expr);
-        verifyFunction(*func);
-pop_namespace:
-		std::cout << "pop }.namespace & proto namesapce" << std::endl;
-		context->Pop();
-		context->Pop();
+    if(p->body->ir)
+    	ret_expr = p->body->ir;
 
-ok_eixt:
-		func_block->end();
-        p->ir = func;
-        return;
+    // ONLY non-empty function Pop here
+	// Pop body symbol-table, ret_expr don't need this;
+	context->Pop();
+
+empty_exit:
+    Builder.CreateRet(ret_expr);
+
+    debug_visit("hello");
+    verifyFunction(*func);
+
+clean_exit:
+
+	context->Pop();
+	std::cout << "pop }.namespace & proto namesapce" << std::endl;
+
+	func_block->end();
+    p->ir = func;
+    return;
     
 }

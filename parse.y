@@ -681,11 +681,15 @@ labeled_statement
 	;
 
 compound_statement
-	: LEFT_BRACE RIGHT_BRACE
+	: LEFT_BRACE RIGHT_BRACE{
+		$$ = NULL;
+		check("空函数");
+	}
 	| LEFT_BRACE block_item_list RIGHT_BRACE {
 
 		$$ = $2;
 		$$->context = $1;
+
 
 	}
 	;
@@ -758,6 +762,7 @@ translation_unit	/*  everything starts here  */
 external_declaration
 	: function_definition
 	| declaration
+		//$$ = $1;
 	;
 
 function_definition
@@ -788,14 +793,20 @@ function_definition
 
 
         AST_func* p = new AST_func ($2,$3);
+
+        // Pop the symbol-table that proto build
+        // when codegen visit the ast, new context would be build
+        $2->context->Pop();
+        check("Pop SymbolTable 函数参数<<<");
+        
         CodegenVisitor v;
         p->accept(&v);
+
         $$ = p;
         //$$->context = $2->context;
 //		((AST_func*)$$)->code();
-        $2->context->Pop();
-        check("Pop SymbolTable 函数参数<<<");
-        dumpAllContext();
+       
+
        // $$ = my_func;
  } //修饰[类型] func(参数表)  语句 
 	;

@@ -20,5 +20,6 @@ int _tmain(int a ,int b,int first){
 
 int f(char b){
 	int i = 3;
+	i = i + 1;
 }
 
