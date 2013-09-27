@@ -34,7 +34,7 @@ LightC is a ANSI C compiler.  implement with modern compiler-kits: yacc lex llvm
 取舍：
 \begin{itemize}
 \item 构造出AST后再生成中间代码，而不是一边parse一边生成
-\item 构造AST时不使用llvm::Type子系统，一是练习，也是方便以后替换掉llvm的东西
+\item 使用llvmtype时，包裹一个wrap类，方便以后替换掉llvm的东西
 \item 构造AST时完成声明和符号表的处理，AST中的decl节点含有中间代码的类型信息
 \end{itemize}
 
@@ -53,6 +53,11 @@ LightC is a ANSI C compiler.  implement with modern compiler-kits: yacc lex llvm
 \item primary 包括变量、整数、字符串等
 \item declarator 声明中得变量，被声明对象
 \end{itemize}
+
+The Mininal Subset of C
+
+func_define,int type,
+
 %%%%
 \section{Type subsystem}
 %%%%
@@ -85,7 +90,8 @@ although could just use llvm's Type system,but attemp approach another way
 %globale[ [declaration] proto[ [declaration] func_def[declaration] ] ]
 %%%%
 \section{中间代码}
-
+\subseciton{函数参数处理}
+llvm::IR的函数参数，value是用Functin::Iterator = arg\_begin()得到的
 \subsection{How to represent stack variables}
 declaration分为global var和function var，有不同的生成代码
 

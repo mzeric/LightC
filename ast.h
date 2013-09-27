@@ -59,7 +59,9 @@ extern ASTContextImpl ContextImpl;
 extern ASTContext *current_ast_context;
 
 ASTContext* getCurrentContext();
+void dumpSymbolTable(SymbolTable *st);
 void dumpAllContext();
+void dumpAllContext(ASTContext *c);
 class SymbolInfo{
   public:
     SymbolInfo():typeName(NULL),
@@ -115,6 +117,9 @@ public:
   SymbolTable* Current(){
     return impl->list.back();
   }
+  SymbolTable* Local(){
+    return sym_table;
+  }
   SymbolInfo* Lookup(Fstring str);
 
   bool hasSymbolTable(){
@@ -136,9 +141,9 @@ public:
       }
   }
 private:
-   SymbolTable *sym_table;
-    typedef std::list<SymbolTable*> ListType;
-    ASTContextImpl *impl;  
+  SymbolTable *sym_table;
+  typedef std::list<SymbolTable*> ListType;
+  ASTContextImpl *impl;  
 };
 //extern ASTContext* GetCurrentContext();
 

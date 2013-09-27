@@ -55,9 +55,9 @@ int main(int argc, char * const *argv){
   		yyparse();
 		//my_call->code();
 		
-    /*    
+    
 		TheModule->dump();
-		SMDiagnostic diag;
+	    /*	SMDiagnostic diag;
     	//Builder.SetInsertPoint(func_block);
     	llvm::BumpPtrAllocator bp;
 		ASTType * ta = (ASTType*)bp.Allocate(sizeof(ASTType),4);

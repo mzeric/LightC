@@ -263,7 +263,11 @@ public:
 	//		return bt->getKind() == BuiltinType::Integer;
 	//	}
 	}
-	virtual llvm::Type* toIRType() {;}
+	virtual llvm::Type* toIRType() {
+		if(ir_type)
+			return ir_type;
+		return NULL;
+	}
 
 };
 

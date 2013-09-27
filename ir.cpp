@@ -70,15 +70,23 @@ void CodegenVisitor::visit(AST_var* p){
 	debug_visit("ast_var");
 	SymbolInfo *st = context->Lookup(p->decl_id);
 	if(!st){
+
 		std::cout<<"undefine symbol: "<<p->decl_id<<std::endl;
 		assert("undefine symbol ");
 	}
-	if(st->value)
+	if(st->value){
 		p->ir = st->value;
-	else{
-		st->node->accept(this);
-		p->ir = st->node->ir;
+		return;
 	}
+	/* evaluate the var, may be a parameter */
+	std::cout << "var.isNull:" << p->decl_id << std::endl;
+	if(st->node == NULL){
+		/* un-init variable or func-parameter */
+		
+	}
+	st->node->accept(this);
+	p->ir = st->node->ir;
+
 
 }
 void CodegenVisitor::visit(AST_integer *p){
@@ -99,7 +107,9 @@ void CodegenVisitor::visit(AST_assignment *p){
 			p->RHS->accept(this);
 		Fvalue *vc = p->RHS->ir;
 		printf("assign :%X\n",vc);
-		NamedValues[p->lhs]=p->RHS;
+
+		SymbolInfo *si = context->Lookup(p->lhs);
+		si->value = p->RHS->ir;
 		
 		vc->setName(p->lhs);
 		p->ir = vc;	
@@ -170,13 +180,14 @@ void CodegenVisitor::visit(Declaration *p){
 }
 void CodegenVisitor::visit(AST_proto *p){
 //		debug_visit("proto");
-		std::cout << "visit proto" << std::endl;
+		std::cout << "visit proto now push" << std::endl;
+
 		std::vector<Type*> int_args(p->args.size(),
 					Type::getInt32Ty(*llvm_context));	//参数类型
 		llvm::FunctionType * func_type = 
 			llvm::FunctionType::get(Type::getInt32Ty(*llvm_context),//返回值类型
                               int_args,false);
-		Function	* func = Function::Create(func_type,Function::ExternalLinkage,p->name,TheModule);
+		Function  *func = Function::Create(func_type,Function::ExternalLinkage,p->name,TheModule);
 		if(func){
             printf("proto.ok\n");
         }
@@ -192,31 +203,39 @@ void CodegenVisitor::visit(AST_proto *p){
 				A_error("重复定义，参数表不同");
 			}
 		}
-        
-        
+              
             //保存参数名
 		int i =0;
 		Function::arg_iterator AI;
 		for(AI = func->arg_begin();i<func->arg_size();AI++,i++){
 			AI->setName(p->args[i].first);
-			AST_var* var = new AST_var(p->args[i].first);
-			var->ir = AI;
-			NamedValues[p->args[i].first] = var;
+			SymbolTable *st = p->context->Local();// == context->Current();
+			st->info[p->args[i].first].value = AI;
+			std::cout << "set args."<<p->args[i].first<<":"<< p->args[i].second.value<<std::endl;
+//			AST_var* var = new AST_var(p->args[i].first);
+//			var->ir = AI;
+//			NamedValues[p->args[i].first] = var;
 		}
 	//	printf("proto:%x\n",func);
 		p->ir = func;
 
 }
+/*!
+	AST_func.body 含有{ }的context
 
+*/
 void CodegenVisitor::visit(AST_func *p){
 //	p->code();
 	std::cout << "visit Func " << p->proto << std::endl;
-    NamedValues.clear();//清除名字空间(符号表)
-    //context->Push(p->context);
+
+    std::cout << "proto.push_namesapce" << std::endl;
+	context->Push(p->proto->context);
+	//dumpAllContext(context);
+
     if(p->proto->ir == NULL){
     	p->proto->accept(this);
     }
-std::cout << "visit Func " << p->proto << std::endl;
+	std::cout << "visit Func " << p->proto << std::endl;
     Function* func = (Function*)(p->proto->ir);
     if(func == NULL){
         debug_visit("func.NULL");
@@ -232,22 +251,37 @@ std::cout << "visit Func " << p->proto << std::endl;
 
         ret_expr = p->ret_value;
     }else{
-        
-    	if(p->body->ir == NULL)
+        /*!
+			Seriously , Push the {->sym_table, Now
+			
+        */
+    	if(p->body->ir == NULL){
+    		context->Push(p->body->context);
+    		std::cout << "now in {" << std::endl;
+    		//dumpAllContext(context);
     		p->body->accept(this);
+    	}
     	debug_visit(p->body->ir);
         ret_expr=p->body->ir;
     }
-    if(ret_expr ){
+    if (!ret_expr){
+        //定义失败
+        //FIXME
+        func->eraseFromParent();
+    	p->ir = NULL;
+    	return;
+    }
+
         Builder.CreateRet(ret_expr);
         verifyFunction(*func);
-        func_block->end();
-        p->ir = func;
+pop_namespace:
+		std::cout << "pop }.namespace & proto namesapce" << std::endl;
+		context->Pop();
+		context->Pop();
 
+ok_eixt:
+		func_block->end();
+        p->ir = func;
         return;
-    }
-        //定义失败
-    func->eraseFromParent();
-    p->ir = NULL;
-    return;
+    
 }

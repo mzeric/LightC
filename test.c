@@ -1,7 +1,7 @@
 /*#include <stdio.h>*/
 int global;
 int _tmain(int a ,int b,int first){
-	const int var;
+	const int var = 7;
 //	int ;
 	volatile int c = 3;
 	char p = "hello";
@@ -10,14 +10,15 @@ int _tmain(int a ,int b,int first){
 
 
 	}
-*/	c = 100+var;
+*/	c = 100+b;
 
-	var = a +c;
+	var = a + c;
 
 //	return var;
 
 }
 
 int f(char b){
-	int i;
+	int i = 3;
 }
+

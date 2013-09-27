@@ -562,6 +562,7 @@ type_qualifier_list
 parameter_type_list
 	: parameter_list {
 		$$ = $1;
+		$$->context = $1->context;
 		parameter_list_num = 0;
 	}
 	| parameter_list ',' ELLIPSIS {$$ = $1;}
@@ -574,22 +575,29 @@ parameter_list
 			$$ = new AST_args;
 			$$->add_args($1->declarator->get_name(), $1->getInfo());
 			parameter_list_num++;
+			$$->context = $1->context;
 	}
 	
 	| parameter_list ',' parameter_declaration{
 			$$->add_args($3->declarator->get_name(), $3->getInfo());
 			parameter_list_num++;
+			$$->context = $1->context;
 	}
 	;
 
 parameter_declaration
 	: declaration_specifiers declarator{
 			check("参数");// 类型 + 变量
+			ASTContext *c = NULL;
 			if(parameter_list_num == 0){
-				ASTContext *c = new ASTContext();
+				c = new ASTContext();
 				c->Push();
 			}
 			$$ =  new Declaration($1, $2);
+			if(parameter_list_num == 0 ){
+				assert(c && "proto-paramlist always avaliable");
+				$$->context = c;
+			}
 			//$2[strlen($2)-1]='\0';
 	}
 	| declaration_specifiers abstract_declarator
@@ -781,7 +789,7 @@ function_definition
 
         AST_func* p = new AST_func ($2,$3);
         CodegenVisitor v;
-        //p->accept(&v);
+        p->accept(&v);
         $$ = p;
         //$$->context = $2->context;
 //		((AST_func*)$$)->code();

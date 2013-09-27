@@ -18,17 +18,23 @@ AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
 
 		printf("[AST_local_var::add_v]");
 }
-
+void dumpSymbolTable(SymbolTable *st){
+	SymbolTable::Iterator iter_t = st->info.begin();
+	for(; iter_t != st->info.end(); ++iter_t){
+		std::cout << "Symbol["<<iter_t->first<< "]" << iter_t->second.value << std::endl;
+	}
+}
 void dumpAllContext(){
 	ASTContext *c = current_ast_context;
 	ASTContext::Iterator iter_c = c->begin();
-	for(;iter_c != c->end(); ++iter_c){
-		SymbolTable::Iterator iter_t = (*iter_c)->info.begin();
-		for(;iter_t != (*iter_c)->info.end(); ++iter_t){
-			std::cout << "Symbol["<<iter_t->first<< "]" << iter_t->second.value << std::endl;
-		}
+	for(;iter_c != c->end(); ++iter_c)
+		dumpSymbolTable(*iter_c);
 
-	}
+}
+void dumpAllContext(ASTContext *c){
+	ASTContext::Iterator iter_c = c->begin();
+	for(;iter_c != c->end(); ++iter_c)
+		dumpSymbolTable(*iter_c);
 }
 
 SymbolInfo* ASTContext::Lookup(Fstring str){

@@ -28,6 +28,6 @@ parse: token.l parse.y
 
 link:
 	@echo Linking ${objs}
-	@${CC} -o 2  ${LLVM_LDFLAGS} ${objs}
+	@${CC} -o lc  ${LLVM_LDFLAGS} ${objs}
 clean:
 	@rm *.o lexer.c parser.c parser.h 2&>/dev/null
