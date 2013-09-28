@@ -65,25 +65,25 @@ public:
  // Fstring get_name(void){return name;}
 public:
     
-    enum TypeID {
-      VoidID = 0,
-      FloatID,
-      DoubleID,
-      LableID,
-      // Derived types
-      //
-      IntegerID,
-      FunctionID,
-      StructID,
-      ArrayID,
-      PointerID,
-      VectorID,
+	enum TypeID {
+		VoidID = 0,
+		FloatID,
+		DoubleID,
+		LableID,
+		// Derived types
+		//
+		IntegerID,
+		FunctionID,
+		StructID,
+		ArrayID,
+		PointerID,
+		VectorID,
 
-      NumTypeID,
-      LastPrimitiveID = LableID,
-      FirstDerivedID = IntegerID
-    };
-    Fstring    name;
+		NumTypeID,
+		LastPrimitiveID = LableID,
+		FirstDerivedID = IntegerID
+	};
+	Fstring    name;
 private:
 	// Note: TypeID : low 8 bit; SubclassData : high 24 bit.
 	uint32_t IDAndSub;
@@ -221,7 +221,7 @@ public:
 };
 class ASTType {
 public:
-	llvm::Type *ir_type;
+	llvm::Type *type;
 	QualType qualifier;
 public:
 	ASTType(){}
@@ -264,8 +264,8 @@ public:
 	//	}
 	}
 	virtual llvm::Type* toIRType() {
-		if(ir_type)
-			return ir_type;
+		if(type)
+			return type;
 		return NULL;
 	}
 

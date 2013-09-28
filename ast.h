@@ -29,7 +29,7 @@ typedef std::string Fstring;
 #define debug_visit(x) std::cout << "visit " << x << std::endl;
 extern llvm::LLVMContext* llvm_context;
 extern struct llvm::Module *TheModule;
-extern llvm::IRBuilder<> Builder;
+//extern llvm::IRBuilder<> Builder;
 
 
 
@@ -63,15 +63,16 @@ void dumpSymbolTable(SymbolTable *st);
 void dumpAllContext();
 void dumpAllContext(ASTContext *c);
 class SymbolInfo{
-  public:
-    SymbolInfo():typeName(NULL),
-      value(NULL),
-      node(NULL)
-      {}
-    SymbolInfo(llvm::Value *v):value(v){}
-    ASTType     *typeName;
-    llvm::Value *value;
-    Node        *node;
+public:
+  SymbolInfo():typeName(NULL),
+    value(NULL),
+    node(NULL)
+    {}
+
+  ASTType     *typeName;
+  llvm::AllocaInst *value;
+
+  Node        *node;
   };
 class SymbolTable{
 public:
@@ -132,10 +133,11 @@ public:
     return impl->list.rend();
   }
 
-  ASTType* GetType(std::string name){
+  ASTType* getType(std::string name){
       ListType::reverse_iterator iter = impl->list.rbegin();
       for(; iter != impl->list.rend(); ++iter ){
         if( (*iter)->info[name].typeName){
+            return (*iter)->info[name].typeName;
 
         }
       }
@@ -269,8 +271,15 @@ public:
 
 class AST_decl_var: public AST_declarator{
 public:
-    AST_decl_var(AST_decl *s, Node *v=NULL);
+    AST_decl_var(AST_decl *s, Node *v=NULL){
+      decl_id = s->decl_id;
+      if(v){
+        init_value = v->ir;
+        decl_node = v;
+      }
 
+      printf("[AST_local_var::add_v]");
+    }
     void accept(Visitor* v){
         v->visit(this);
     }
@@ -290,8 +299,8 @@ public:
         SymbolTable* st = context->Current();
 
         st->info[d->decl_id].typeName = specifier;
-        if (d->init_value)
-          st->info[d->decl_id].value = d->init_value;
+        if (!d->init_value)
+          d->init_value = llvm::ConstantInt::get(llvm::getGlobalContext(), llvm::APInt(32, 0));
         if (d->decl_node)
           st->info[d->decl_id].node  = d->decl_node;
 
@@ -367,7 +376,7 @@ public:
     Node  *proto;
     Node  *body;
     Fvalue    *ret_value;
-    AST_func(Node* proto, Node* body): proto(proto),body(body){}
+    AST_func(Node *p, Node *b): proto(p),body(b){}
   void accept(Visitor* v){
     v->visit(this);
   }       
@@ -379,10 +388,11 @@ public:
 //    void visit(Node *n){}// just pass the compile
     ASTContextImpl *CodeGenContextImpl;
     ASTContext *context;
+    llvm::IRBuilder<> *Builder;
 
     CodegenVisitor():CodeGenContextImpl(new ASTContextImpl()){
       context = new ASTContext(CodeGenContextImpl);
-
+      Builder = new llvm::IRBuilder<>(llvm::getGlobalContext());
     }
     ~CodegenVisitor(){
       delete CodeGenContextImpl;
@@ -420,7 +430,7 @@ public:
     void visit(Declaration* p);
     void visit(AST_proto *p);
     void visit(AST_func *p);
-
+    void CreateProtoAlloc(AST_proto *p, llvm::Function *f);
 
 };
 class DumpASTVisitor: public Node::Visitor{

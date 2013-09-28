@@ -7,9 +7,10 @@ LLVM_VERSION=$(shell ${LLVM_ROOT}/bin/llvm-config --version|sed 's/\.//')
 LLVM_CXXFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags ) \
 	-D LLVM_VERSION=${LLVM_VERSION}
 LLVM_CXXFLAGS += -I${CLANG_INC} \
-				-I${BOOST_INC}
+				-I${BOOST_INC} \
+				-g
 
-LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs ) \
+LLVM_LDFLAGS=$(shell ${LLVM_ROOT}/bin/llvm-config --cppflags --ldflags --libs core jit native ) \
 	-D LLVM_VERSION=${LLVM_VERSION}
 LLVM_LDFLAGS += -I${CLANG_INC}
 

@@ -2,16 +2,41 @@
 #include "ast.h"
 #include "type.h"
 using namespace llvm;
+extern FunctionPassManager *TheFPM;
 int main(int argc, char * const *argv){
         
-		LLVMContext &Context = getGlobalContext();
-		llvm_context = &Context;
+        LLVMContext &Context = getGlobalContext();
+        llvm_context = &Context;
+        llvm::ExecutionEngine *exec_engine;
 
 
-		current_ast_context = new ASTContext();// The default ContextImpl
-		current_ast_context->Push();// Gloable Symbol Table;
+        current_ast_context = new ASTContext();// The default ContextImpl
+        current_ast_context->Push();// Gloable Symbol Table;
 
-		TheModule = new Module("cool jit",*llvm_context);
+        TheModule = new Module("cool jit",*llvm_context);
+        std::string ErrStr;
+        std::cout << "wtf"<< std::endl;
+        exec_engine = EngineBuilder(TheModule).setErrorStr(&ErrStr).create();
+        if (!exec_engine){
+                std::cout << "exec_engine failed "<< ErrStr<<std::endl;
+        }
+        FunctionPassManager midFPM(TheModule);
+                        std::cout << "wtf"<< std::endl;
+        //midFPM.add(new DataLayout(*exec_engine->getDataLayout()));
+         //               std::cout << "wtf"<< std::endl;
+        midFPM.add(createBasicAliasAnalysisPass());
+        // lower load/store to registers
+        midFPM.add(createPromoteMemoryToRegisterPass());
+        midFPM.add(createInstructionCombiningPass());
+        // cool pass !
+        midFPM.add(createReassociatePass());
+        // reduce common sub-express !
+        midFPM.add(createGVNPass());
+        midFPM.add(createCFGSimplificationPass());
+
+        midFPM.doInitialization();
+        TheFPM = &midFPM;
+
  /*		       
 		std::vector<const Type*> Doubles(2, Type::getDoubleTy(getGlobalContext()));
 
@@ -52,11 +77,11 @@ int main(int argc, char * const *argv){
 		AST_call * my_call = new AST_call("my_func",my_call_args);
 		my_func->code();
   */
-  		yyparse();
-		//my_call->code();
-		
-    
-		TheModule->dump();
+        yyparse();
+        //my_call->code();
+
+        TheFPM = NULL;
+        TheModule->dump();
 	    /*	SMDiagnostic diag;
     	//Builder.SetInsertPoint(func_block);
     	llvm::BumpPtrAllocator bp;
@@ -74,7 +99,7 @@ int main(int argc, char * const *argv){
 		//ModuleTest->dump();
 
 	*/
-		return 0;
+        return 0;
         
         
     

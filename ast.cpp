@@ -9,15 +9,7 @@ ASTContext* getCurrentContext(){
 }
 //
 
-AST_decl_var::AST_decl_var(AST_decl *s, Node *v ){
-		decl_id = s->decl_id;
-		if(v){
-			init_value = v->ir;
-			decl_node = v;
-		}
 
-		printf("[AST_local_var::add_v]");
-}
 void dumpSymbolTable(SymbolTable *st){
 	SymbolTable::Iterator iter_t = st->info.begin();
 	for(; iter_t != st->info.end(); ++iter_t){

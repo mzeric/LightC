@@ -60,6 +60,7 @@ func_define,int type,
 
 %%%%
 \section{Type subsystem}
+getInt32Ty的实现，一个impl类
 %%%%
 \section{Memory}
 
@@ -100,6 +101,7 @@ declaration分为global var和function var，有不同的生成代码
 \end{itemize}
 
 \section{Error Recovery}
+ErrorV的设计很巧妙
 
 \section{Testing}
 生成的IR代码与clang的IR代码对比，优化选项全部关闭
@@ -110,6 +112,14 @@ declaration分为global var和function var，有不同的生成代码
 开发计划 
 
 先支持函数，基本运算，变量定义；建立命名空间，类型系统，代码生成框架，内存处理；然后再逐步扩展语言
+
+load store完成，可以合并到master分支了，准备开始handwrite部分
+
+参考资料:
+
+crafting a compiler with c
+
+
 
 \section{Index}
 \begin{itemize}
