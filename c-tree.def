@@ -1,0 +1,318 @@
+/**
+   The third argument can be: 
+   'x' for an exceptional code (fits no category).
+   't' for a type object code.
+   'b' for a lexical block.
+   'c' for codes for constants.
+   'd' for codes for declarations (also serving as variable refs).
+   'r' for codes for references to storage.
+   '<' for codes for comparison expressions.
+   '1' for codes for unary arithmetic expressions.
+   '2' for codes for binary arithmetic expressions.
+   's' for codes for "statement" expressions, which have side-effects,
+       but usually no interesting value.
+   'e' for codes for other kinds of expressions.  
+   'g' for codes for gimple ins
+*/  
+
+DEFTREECODE (IDENTIFIER_NODE, "identifier_node", 'x', 0)
+
+DEFTREECODE (ANODE_LIST, "tree_list", 'x', 0)
+DEFTREECODE (ANODE_VEC, "tree_vec", 'x', 0)
+DEFTREECODE (BLOCK, "block", 'b', 0)
+/* Struct in C */
+DEFTREECODE (RECORD_TYPE, "record_type", 't', 0)
+/* Union in C */
+DEFTREECODE (UNION_TYPE, "union_type", 't', 0)
+
+
+DEFTREECODE (VOID_TYPE, "void_type", 't', 0)    /* The void type in C */
+DEFTREECODE (INTEGER_TYPE, "integer_type", 't', 0)
+DEFTREECODE (ENUMERAL_TYPE, "enumeral_type", 't', 0)
+DEFTREECODE (BOOLEAN_TYPE, "boolean_type", 't', 0)
+DEFTREECODE (CHAR_TYPE, "char_type", 't', 0)
+DEFTREECODE (POINTER_TYPE, "pointer_type", 't', 0)
+DEFTREECODE (OFFSET_TYPE, "offset_type", 't', 0)
+DEFTREECODE (REFERENCE_TYPE, "reference_type", 't', 0)
+
+DEFTREECODE (ARRAY_TYPE, "array_type", 't', 0)
+
+/* Type of functions.  Special fields:
+   TREE_TYPE                type of value returned.
+   TYPE_ARG_TYPES      list of types of arguments expected.
+        this list is made of TREE_LIST nodes.
+   Types of "Procedures" in languages where they are different from functions
+   have code FUNCTION_TYPE also, but then TREE_TYPE is zero or void type.  */
+DEFTREECODE (FUNCTION_TYPE, "function_type", 't', 0)
+
+
+/*
+   First define the constant
+*/
+DEFTREECODE (INTEGER_CST, "integer_cst", 'c', 0)
+DEFTREECODE (VECTOR_CST, "vector_cst", 'c', 0)
+DEFTREECODE (STRING_CST, "string_cst", 'c', 0)
+
+/*
+   Then the decls
+   一个上下文（作用域）的decls通过tree_common.chain链接在一起，使用宏TREE_CHAIN
+   每个xx_DECL都有一个DECL_NAME部分（宏），里面含有一个IDENTIFIER_NODE（labels可能为空）
+   DECL_CONTEXT，指向代表包含它的作用域的tree，比如FIELD_DECL的DECL_CONTEXT指向RECORD_TYPE或UNION_TRYP等
+   对于VAR_DECL、PARM_、FUNCTION_、，它要么指向包含它的FUNCTION_DECL、或RECORD_TYPE或NULL或TRANSLATION_UNIT_DEL
+
+   DECL_ABSTRACT_ORIGIN 
+   TREE_TYPE 跟具体的有关，如FUCNTION_TYPE 代表返回值类型，对于TYPE_DECL，则代表被声明的类型的
+
+   DECL_INITIAL 保存用于初始化的值、常量的值，
+      对于函数，它是body（一个BLOCK TYPE的node，代表function的binding，这个BLOCK的body是真正的statements.）
+      对于LABEL_DECL，他是一个flag
+
+   PARM_DECL 用 DECL_ARG_TYPE 接受参数（实参）的类型，可能与形参不同
+   FUNCTION_DECL 有4个自己的值（宏），
+      DECL_ARGUMENTS 是PARM_DECL的chain
+      DECL_RESULT 保存RESULT_DECL节点，NULL代表没有返回值
+      DECL_FUNCTION_CODE 是个code 数，用于builtin function的
+      DECL_SOURCE_FILE 代表文件名和声明处的行号
+   DECL_ABSTRACT 非NULL，如果DECL是个抽象
+
+
+
+*/
+DEFTREECODE (FUNCTION_DECL, "function_decl", 'd', 0)
+DEFTREECODE (LABEL_DECL, "label_decl", 'd', 0)
+DEFTREECODE (CONST_DECL, "const_decl", 'd', 0)
+DEFTREECODE (TYPE_DECL, "type_decl", 'd', 0)
+DEFTREECODE (VAR_DECL, "var_decl", 'd', 0)
+DEFTREECODE (PARM_DECL, "parm_decl", 'd', 0)
+DEFTREECODE (RESULT_DECL, "result_decl", 'd', 0)
+DEFTREECODE (FIELD_DECL, "field_decl", 'd', 0)
+
+DEFTREECODE (TRANSLATION_UNIT_DECL, "translation_unit_decl", 'd', 0)
+/* C unary `*' 解引用.  One operand, an expression for a pointer.  */
+DEFTREECODE (INDIRECT_REF, "indirect_ref", 'r', 1)
+/* 数组的访问. Operand 0 是数组; operand 1 是下标 */
+DEFTREECODE (ARRAY_REF, "array_ref", 'r', 2)
+
+
+/* 表达式 */
+/* The expression types are mostly straightforward, with the fourth argument
+   of DEFTREECODE saying how many operands there are.
+   Unless otherwise specified, the operands are expressions and the
+   types of all the operands and the expression must all be the same.  */
+
+/* Contains two expressions to compute, one followed by the other.
+   the first value is ignored.  The second one's value is used.  The
+   type of the first expression need not agree with the other types.  */
+
+DEFTREECODE (COMPOUND_EXPR, "compound_expr", 'e', 2)
+
+/* Assignment expression.  Operand 0 is the what to set; 1, the new value.  */
+DEFTREECODE (MODIFY_EXPR, "modify_expr", 'e', 2)
+
+/* Initialization expression.  Operand 0 is the variable to initialize;
+   Operand 1 is the initializer.  */
+DEFTREECODE (INIT_EXPR, "init_expr", 'e', 2)
+
+/* C的双目条件表达式 ( ... ? ... : ...  in C).
+   Operand 0 is the condition.
+   Operand 1 is the then-value.
+   Operand 2 is the else-value.
+   Operand 0 may be of any type.
+   Operand 1 must have the same type as the entire expression, unless
+   it unconditionally throws an exception, in which case it should
+   have VOID_TYPE.  The same constraints apply to operand 2.  */
+DEFTREECODE (COND_EXPR, "cond_expr", 'e', 3)
+
+/* Function call.  Operand 0 is the function.
+   Operand 1 is the argument list, a list of expressions
+   made out of a chain of TREE_LIST nodes.  */
+DEFTREECODE (CALL_EXPR, "call_expr", 'e', 2)
+
+DEFTREECODE (WITH_CLEANUP_EXPR, "with_cleanup_expr", 'e', 3)
+/* 前向引用 */
+/* Denotes a record to later be supplied with a WITH_RECORD_EXPR when
+   evaluating this expression.  The type of this expression is used to
+   find the record to replace it.  */
+DEFTREECODE (PLACEHOLDER_EXPR, "placeholder_expr", 'x', 0)
+
+/* Provide an expression that references a record to be used in place
+   of a PLACEHOLDER_EXPR.  The record to be used is the record within
+   operand 1 that has the same type as the PLACEHOLDER_EXPR in
+   operand 0.  */
+DEFTREECODE (WITH_RECORD_EXPR, "with_record_expr", 'e', 2)
+
+/* Simple arithmetic.  */
+DEFTREECODE (PLUS_EXPR, "plus_expr", '2', 2)
+DEFTREECODE (MINUS_EXPR, "minus_expr", '2', 2)
+DEFTREECODE (MULT_EXPR, "mult_expr", '2', 2)
+/* 四种除法 */
+/* Division for integer result that rounds the quotient toward zero.  */
+DEFTREECODE (TRUNC_DIV_EXPR, "trunc_div_expr", '2', 2)
+
+/* Division for integer result that rounds the quotient toward infinity.  */
+DEFTREECODE (CEIL_DIV_EXPR, "ceil_div_expr", '2', 2)
+
+/* Division for integer result that rounds toward minus infinity.  */
+DEFTREECODE (FLOOR_DIV_EXPR, "floor_div_expr", '2', 2)
+
+/* Division for integer result that rounds toward nearest integer.  */
+DEFTREECODE (ROUND_DIV_EXPR, "round_div_expr", '2', 2)
+
+/* 四种对应的余数 */
+DEFTREECODE (TRUNC_MOD_EXPR, "trunc_mod_expr", '2', 2)
+DEFTREECODE (CEIL_MOD_EXPR, "ceil_mod_expr", '2', 2)
+DEFTREECODE (FLOOR_MOD_EXPR, "floor_mod_expr", '2', 2)
+DEFTREECODE (ROUND_MOD_EXPR, "round_mod_expr", '2', 2)
+
+/* 移位、位运算
+   Shift means logical shift if done on an
+   unsigned type, arithmetic shift if done on a signed type.
+   The second operand is the number of bits to
+   shift by; it need not be the same type as the first operand and result.
+   Note that the result is undefined if the second operand is larger
+   than the first operand's type size.  */
+DEFTREECODE (LSHIFT_EXPR, "lshift_expr", '2', 2)
+DEFTREECODE (RSHIFT_EXPR, "rshift_expr", '2', 2)
+DEFTREECODE (LROTATE_EXPR, "lrotate_expr", '2', 2)
+DEFTREECODE (RROTATE_EXPR, "rrotate_expr", '2', 2)
+
+/* 位运算 */
+DEFTREECODE (BIT_IOR_EXPR, "bit_ior_expr", '2', 2)
+DEFTREECODE (BIT_XOR_EXPR, "bit_xor_expr", '2', 2)
+DEFTREECODE (BIT_AND_EXPR, "bit_and_expr", '2', 2)
+DEFTREECODE (BIT_NOT_EXPR, "bit_not_expr", '1', 1)
+
+/*  居然是在这里处理这种特性
+ANDIF and ORIF allow the second operand not to be computed if the
+   value of the expression is determined from the first operand.  AND,
+   OR, and XOR always compute the second operand whether its value is
+   needed or not (for side effects).  The operand may have
+   BOOLEAN_TYPE or INTEGER_TYPE.  In either case, the argument will be
+   either zero or one.  For example, a TRUTH_NOT_EXPR will never have
+   an INTEGER_TYPE VAR_DECL as its argument; instead, a NE_EXPR will be
+   used to compare the VAR_DECL to zero, thereby obtaining a node with
+   value zero or one.  */
+DEFTREECODE (TRUTH_ANDIF_EXPR, "truth_andif_expr", 'e', 2)
+DEFTREECODE (TRUTH_ORIF_EXPR, "truth_orif_expr", 'e', 2)
+DEFTREECODE (TRUTH_AND_EXPR, "truth_and_expr", 'e', 2)
+DEFTREECODE (TRUTH_OR_EXPR, "truth_or_expr", 'e', 2)
+DEFTREECODE (TRUTH_XOR_EXPR, "truth_xor_expr", 'e', 2)
+DEFTREECODE (TRUTH_NOT_EXPR, "truth_not_expr", 'e', 1)
+
+/* 对比操作符
+   `EQ_EXPR' and `NE_EXPR' are allowed for any types.
+   The others are allowed only for integer (or pointer or enumeral)
+   or real types.
+   In all cases the operands will have the same type,
+   and the value is always the type used by the language for booleans.  */
+DEFTREECODE (LT_EXPR, "lt_expr", '<', 2)
+DEFTREECODE (LE_EXPR, "le_expr", '<', 2)
+DEFTREECODE (GT_EXPR, "gt_expr", '<', 2)
+DEFTREECODE (GE_EXPR, "ge_expr", '<', 2)
+DEFTREECODE (EQ_EXPR, "eq_expr", '<', 2)
+DEFTREECODE (NE_EXPR, "ne_expr", '<', 2)
+
+/* Additional relational operators for floating point unordered.  */
+DEFTREECODE (UNORDERED_EXPR, "unordered_expr", '<', 2)
+DEFTREECODE (ORDERED_EXPR, "ordered_expr", '<', 2)
+
+/* These are equivalent to unordered or ...  */
+DEFTREECODE (UNLT_EXPR, "unlt_expr", '<', 2)
+DEFTREECODE (UNLE_EXPR, "unle_expr", '<', 2)
+DEFTREECODE (UNGT_EXPR, "ungt_expr", '<', 2)
+DEFTREECODE (UNGE_EXPR, "unge_expr", '<', 2)
+DEFTREECODE (UNEQ_EXPR, "uneq_expr", '<', 2)
+/* 代表所有的类型转换函数 */
+DEFTREECODE (CONVERT_EXPR, "convert_expr", '1', 1)
+DEFTREECODE (NOP_EXPR, "nop_expr", '1', 1)
+
+/* 确保非左值 */
+DEFTREECODE (NON_LVALUE_EXPR, "non_lvalue_expr", '1', 1)
+/* 临时生成的表达式 */
+DEFTREECODE (SAVE_EXPR, "save_expr", 'e', 3)
+DEFTREECODE (UNSAVED_EXPR, "unsave_expr", 'e', 1)
+DEFTREECODE (RTL_EXPR, "rtl_expr", 'e', 3)
+/* & in C.  Value is the address at which the operand's value resides.
+   Operand may have any mode.  Result mode is Pmode.  */
+DEFTREECODE (ADDR_EXPR, "addr_expr", 'e', 1)
+
+/* 区别，非左值.  */
+DEFTREECODE (REFERENCE_EXPR, "reference_expr", 'e', 1)
+/* 自加、自减 operand second is size to incre or decre */
+DEFTREECODE (PREDECREMENT_EXPR, "predecrement_expr", 'e', 2)
+DEFTREECODE (PREINCREMENT_EXPR, "preincrement_expr", 'e', 2)
+DEFTREECODE (POSTDECREMENT_EXPR, "postdecrement_expr", 'e', 2)
+DEFTREECODE (POSTINCREMENT_EXPR, "postincrement_expr", 'e', 2)
+
+DEFTREECODE (VA_ARG_EXPR, "va_arg_expr", 'e', 1)
+/* Used internally by expand_expr, not front-ends */
+DEFTREECODE (GOTO_SUBROUTINE_EXPR, "goto_subroutine", 'e', 2)
+DEFTREECODE (LABEL_EXPR, "label_expr", 's', 1)
+DEFTREECODE (GOTO_EXPR, "goto_expr", 's', 1)
+/* 返回语句 */
+DEFTREECODE (RETURN_EXPR, "return_expr", 's', 1)
+DEFTREECODE (EXIT_EXPR, "exit_expr", 's', 1)
+DEFTREECODE (LOOP_EXPR, "loop_expr", 's', 1)
+/* 用来标记block表达式 */
+DEFTREECODE (LABELED_BLOCK_EXPR, "labeled_block_expr", 'e', 2)
+DEFTREECODE (EXIT_BLOCK_EXPR, "exit_block_expr", 'e', 2)
+
+/* switch 表达式 */
+DEFTREECODE (SWITCH_EXPR, "switch_expr", 'e', 2)
+
+/* */
+DEFTREECODE (SIZEOF_EXPR, "sizeof_expr", '1', 1)
+DEFTREECODE (ARROW_EXPR, "arrow_expr", 'e', 1)
+DEFTREECODE (ALIGNOF_EXPR, "alignof_expr", '1', 1)
+
+/* Used to represent an expression statement.  Use `EXPR_STMT_EXPR' to
+   obtain the expression.  */
+DEFTREECODE (EXPR_STMT, "expr_stmt", 'e', 1)
+
+/* Used to represent a brace-enclosed block.  The operand is
+   COMPOUND_BODY.  */
+DEFTREECODE (COMPOUND_STMT, "compound_stmt", 'e', 1)
+
+/* Used to represent a local declaration. The operand is
+   DECL_STMT_DECL.  */
+DEFTREECODE (DECL_STMT, "decl_stmt", 'e', 1)
+
+/* Represents an 'if' statement. The operands are IF_COND, (c-common.h, c-semantics.c)
+   THEN_CLAUSE, and ELSE_CLAUSE, respectively.  */
+DEFTREECODE (IF_STMT, "if_stmt", 'e', 3)
+
+/* Used to represent a `for' statement. The operands are
+   FOR_INIT_STMT, FOR_COND, FOR_EXPR, and FOR_BODY, respectively.  */
+DEFTREECODE (FOR_STMT, "for_stmt", 'e', 4)
+
+/* Used to represent a 'while' statement. The operands are WHILE_COND
+   and WHILE_BODY, respectively.  */
+DEFTREECODE (WHILE_STMT, "while_stmt", 'e', 2)
+
+/* Used to represent a 'do' statement. The operands are DO_BODY and
+   DO_COND, respectively.  */
+DEFTREECODE (DO_STMT, "do_stmt", 'e', 2)
+
+/* Used to represent a 'return' statement. The operand is
+   RETURN_STMT_EXPR.  */
+DEFTREECODE (RETURN_STMT, "return_stmt", 'e', 1)
+
+/* Used to represent a 'break' statement.  */
+DEFTREECODE (BREAK_STMT, "break_stmt", 'e', 0)
+
+/* Used to represent a 'continue' statement.  */
+DEFTREECODE (CONTINUE_STMT, "continue_stmt", 'e', 0)
+
+/* Used to represent a 'switch' statement. The operands are
+   SWITCH_COND, SWITCH_BODY and SWITCH_TYPE, respectively.  */
+DEFTREECODE (SWITCH_STMT, "switch_stmt", 'e', 3)
+
+/* Used to represent a 'goto' statement. The operand is GOTO_DESTINATION.  */
+DEFTREECODE (GOTO_STMT, "goto_stmt", 'e', 1)
+DEFTREECODE (LABEL_STMT, "label_stmt", 'e', 1)
+
+DEFTREECODE (SCOPE_STMT, "scope_stmt", 'e', 1)
+
+DEFTREECODE (CASE_LABEL, "case_label", 'e', 3)
+DEFTREECODE (STMT_EXPR, "stmt_expr", 'e', 1)
+DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
