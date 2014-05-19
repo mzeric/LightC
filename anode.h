@@ -14,16 +14,24 @@ enum anode_code{
 
 class anode_node;
 typedef anode_node* anode;
+extern anode top_ast_node;
+
+#define HOST_WIDTH_INT  int
 
 extern int anode_code_length(int node);
 extern int anode_code(anode node);
 extern int anode_code_class(int code);
 extern const char* anode_code_name(int code);
+
+extern anode global_space;
+extern anode current_declspaces;
+extern anode declspace_stack;
+
 void anode_class_check_failed(const anode node, int cl, const char *file,
                 int line, const char* function);
-void anode_check_failed(const anode node, enum anode_code code, const char*file,
+void anode_check_failed(const anode node, int  code, const char*file,
 		int line, const char* function);
-void anode_operand_check_failed (int idx, enum anode_code code, const char *file,
+void anode_operand_check_failed (int idx, int  code, const char *file,
                                 int line, const char *function);
 #define ANODE_CLASS_CHECK(T, CLASS) __extension__                        \
 ({  __typeof(T) __t = (T);                                               \
@@ -67,24 +75,6 @@ void anode_operand_check_failed (int idx, enum anode_code code, const char *file
     &__t->operands[__i];}))
 
 
-
-#define ANODE_(Node, Type) __extension__ 				\
-({  ((Type*)(Node)); })
-#define ANODE_CHAIN(Node)       ANODE_CHECK((Node), ANODE_LIST)->chain
-#define ANODE_LIST_CHECK
-#define ANODE_VALUE(Node)       ANODE_(ANODE_CHECK((Node), ANODE_LIST),anode_list)->value
-/* Every node has one type */
-#define ANODE_TYPE(Node)        ((Node)->type)
-#define ANODE_DECL_TYPE(Node)   (ANODE_CLASS_CHECK((Node),'d')->type)
-
-#define IDENTIFIER_POINTER(Node) ANODE_CHECK(ANODE_(Node, anode_identifier), IDENTIFIER_NODE)->pointer
-
-#define ANODE_OPERAND(NODE, I)  ANODE_OPERAND_CHECK(NODE, I)
-#define IF_STMT_CHECK(NODE)     ANODE_CHECK(NODE, IF_STMT)
-#define IF_COND(NODE)           ANODE_OPERAND (IF_STMT_CHECK (NODE), 0)
-#define THEN_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 1)
-#define ELSE_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 2)
-
 class anode_node{
 public:
         anode           chain;
@@ -123,6 +113,7 @@ public:
 	}
     anode_node(){
         chain = NULL;
+        type  = NULL;
     }
 	virtual ~anode_node(){
 	}
@@ -303,14 +294,6 @@ public:
 
 };
 
-inline anode decl_name(anode node){
-	anode_decl *t = ANODE_(node, anode_decl);
-	return ANODE_CLASS_CHECK(t, 'd')->name;
-}
-inline anode decl_initial(anode node){
-	anode_decl *t = (anode_decl*)node;
-	return ANODE_CLASS_CHECK(t, 'd')->initial;
-}
 
 class anode_expr : public anode_node {
 public:
@@ -343,10 +326,90 @@ public:
         anode fragment_chain;
 };
 
+
+#define ANODE_(Node, Type) __extension__                \
+({  ((Type*)(Node)); })
+#define ANODE_CHAIN(t)       ((t)->chain)
+#define ANODE_LIST_CHECK
+#define ANODE_VALUE(Node)       ANODE_(ANODE_CHECK((Node), ANODE_LIST),anode_list)->value
+/* Every node has one type */
+#define ANODE_TYPE(Node)        ((Node)->type)
+#define TYPE_SIZE(t)           ANODE_(ANODE_CLASS_CHECK((t), 't'), anode_type)->size
+#define ANODE_DECL_TYPE(Node)   (ANODE_CLASS_CHECK((Node),'d')->type)
+#define ANODE_DECL_NAME(Node)   (ANODE_CLASS_CHECK((Node),'d')->name)
+
+#define IDENTIFIER_POINTER(Node) ANODE_CHECK(ANODE_(Node, anode_identifier), IDENTIFIER_NODE)->pointer
+
+#define ANODE_OPERAND(NODE, I)  ANODE_OPERAND_CHECK(NODE, I)
+#define IF_STMT_CHECK(NODE)     ANODE_CHECK(NODE, IF_STMT)
+#define IF_COND(NODE)           ANODE_OPERAND (IF_STMT_CHECK (NODE), 0)
+#define THEN_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 1)
+#define ELSE_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 2)
+
+
+anode decl_name(anode node);
+
+inline anode decl_initial(anode node){
+    anode_decl *t = (anode_decl*)node;
+    return ANODE_CLASS_CHECK(t, 'd')->initial;
+}
+
 anode build_list(anode root, anode node);
 anode chain_cat(anode a, anode b);
-anode build_decl(anode specifier, anode declarator);
+anode build_var_decl(anode specifier, anode declarator);
 anode anode_cons(anode purpose, anode node, anode chain);
 void c_parse_init(void);
 anode build_stmt(int code, ...);
+void    push_namespace (void);
+void    pop_namespace (void);
+void    push_decl(anode decl);
+
+#define FOR_EACH_DECL(T)        \
+    for (anode T = current_declspaces; T; T = ANODE_CHAIN(T))
+
+int     is_branch(anode t);
+
+/*
+    about Basic Block Construction
+*/
+struct edge_s;
+
+typedef struct basic_block_s{
+        struct basic_block_s    *prev, *next; /* the chain */
+        anode                   list;
+        anode                   outer_loop; /* outer loop for break */
+        anode                   head, exit; /* first & last node of the block */
+        struct edge_s           *pred, *succ; /* edges in / out of the block */
+        anode                   decl; /* store the current_declspaces */
+
+}basic_block_t, *bb;
+
+typedef struct edge_s{
+
+        struct edge_s           *pred_next, *succ_next;
+        struct basic_block_s    *src, *dst;
+        int                     flag;
+
+}edge_t, *edge;
+extern struct basic_block_s entry_exit_blocks[2];
+#define ENTRY_BLOCK_PTR (&entry_exit_blocks[0]);
+#define EXIT_BLOCK_PTR (&entry_exit_blocks[1]);
+
+edge make_edge(bb src, bb dst, int flag);
+edge get_edge(bb src, bb dst);
+void remove_edge(edge e);
+anode lookup_name_current_bb(const char *name);
+
+void push_ssa_decl(anode id, anode value);
+anode chain_last(anode l);
+
+extern struct basic_block_s *current_bb;
+void dump_block_list(anode l, int le);
+void print_decl(anode l);
+anode build_func_decl(anode declar, anode params);
+anode build_decl(anode speci, anode declar);
+anode build_parm_decl(anode a, anode b);
+
+
+
 #endif

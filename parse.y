@@ -23,7 +23,7 @@ using namespace std;
 extern "C" int yylex(void);
 
 static int parameter_list_num = 0;
-
+anode top_ast_node;
 extern "C" void yyerror(char const *s)
 {
 	fflush(stdout);
@@ -96,6 +96,7 @@ extern "C" void check(const char *msg, ...){
 
 
 %type <num> assignment_operator 
+%type <ast_node> 	external_declaration
 %type <ast_node> 	function_definition
 %type <ast_node> 	declarator
 %type <ast_declarator> 	direct_declarator
@@ -139,26 +140,16 @@ extern "C" void check(const char *msg, ...){
 %type <ast_type>	type_specifier
 %type <ast_qual>	type_qualifier
 %type <ast_qual>	type_qualifier_list
+%type <ast_node>	type_name
 %expect 26
 %{
 
 /* something help parsing */
-static anode global_space;
-static anode current_declspaces;
-static anode declspace_stack;
+anode global_space;
+anode current_declspaces;
+anode declspace_stack;
 
-void push_namespace(void){
-	declspace_stack = anode_cons(NULL, current_declspaces, declspace_stack);
-}
-void pop_namespace(void){
-	current_declspaces = ANODE_VALUE(declspace_stack);
-	declspace_stack = ANODE_CHAIN(declspace_stack);
-}
-void push_decl(anode decl){
-	/* only need to move the current_decl */
-	anode_decl *d = ANODE_(ANODE_CLASS_CHECK(decl, 'd'), anode_decl);
-	current_declspaces = anode_cons(NULL, d, current_declspaces);
-}
+
 typedef void (*ANODE_DECL_CALLBACK)(anode);
 
 void for_each_decl(ANODE_DECL_CALLBACK f){
@@ -168,23 +159,31 @@ void for_each_decl(ANODE_DECL_CALLBACK f){
 	}
 	
 }
-#define FOR_EACH_DECL(T) 		\
-	for (anode T = current_declspaces; T; T = ANODE_CHAIN(T))
-int compare_name(anode node, const char *name){
-	char *p = IDENTIFIER_POINTER(decl_name((node)));
-	return strcmp(p, name);
+anode get_declspace_identifier(anode l){
+	if(anode_code_class(anode_code(l)) == 'd')
+		return decl_name(l);
+	return ANODE_CHECK(l, IDENTIFIER_NODE);
 }
-void print_decl(anode node){
-	if(!node)
-		printf("type: null\tname: null\n");
-	else
-	printf("type: %s\tname: %s\n",
-		anode_code_name(anode_code(ANODE_DECL_TYPE(node))),
-		IDENTIFIER_POINTER(decl_name(node)));
+int compare_name(anode node, const char *name){
+	char *p = IDENTIFIER_POINTER(get_declspace_identifier(node));
+	return strcmp(p, name);
 }
 anode lookup_name(const char *name){
 	FOR_EACH_DECL(decl){
+		if (ANODE_VALUE(decl) == NULL){
+			printf("null skip\n");
+			continue;
+		}
 		if(compare_name(ANODE_VALUE(decl), name) == 0)
+			return ANODE_VALUE(decl);
+	}
+	return NULL;
+}
+anode lookup_name_current_bb(const char *name){
+	FOR_EACH_DECL(decl){
+		if (ANODE_VALUE(decl) == NULL)
+			break;
+		if (strcmp(IDENTIFIER_POINTER(get_declspace_identifier(ANODE_VALUE(decl))), name) == 0)
 			return ANODE_VALUE(decl);
 	}
 	return NULL;
@@ -225,7 +224,10 @@ primary_expression /* operand of a expression */
 		//$$ = new AST_literal($1);
 		//delete $1; /* free the lexer's std::string* */
 	}
-	| '(' expression ')'{check("括号");}
+	| '(' expression ')'{
+		check("括号");
+		$$ = $2;
+	}
 	;
 
 postfix_expression
@@ -237,8 +239,13 @@ postfix_expression
 	| postfix_expression '(' argument_expression_list ')'
 	| postfix_expression '.' IDENTIFIER
 	| postfix_expression PTR_OP IDENTIFIER
-	| postfix_expression INC_OP
-	| postfix_expression DEC_OP
+	| postfix_expression INC_OP{
+		/* second operands should be the sizeof first operand */
+		$$ = build_stmt(POSTINCREMENT_EXPR, $1, TYPE_SIZE(ANODE_TYPE($1)));
+	}
+	| postfix_expression DEC_OP{
+		$$ = build_stmt(POSTDECREMENT_EXPR, $1, TYPE_SIZE(ANODE_TYPE($1)));
+	}
 	| '(' type_name ')' LEFT_BRACE initializer_list RIGHT_BRACE
 	| '(' type_name ')' LEFT_BRACE initializer_list ',' RIGHT_BRACE
 	;
@@ -252,11 +259,19 @@ unary_expression
 	: postfix_expression{
 		$$ = $1;
 	}
-	| INC_OP unary_expression
-	| DEC_OP unary_expression
+	| INC_OP unary_expression{
+		$$ = build_stmt(PREINCREMENT_EXPR, $2, TYPE_SIZE(ANODE_TYPE($2)));
+	}
+	| DEC_OP unary_expression{
+		$$ = build_stmt(PREDECREMENT_EXPR, $2, TYPE_SIZE(ANODE_TYPE($2)));
+	}
 	| unary_operator cast_expression
-	| SIZEOF unary_expression
-	| SIZEOF '(' type_name ')'
+	| SIZEOF unary_expression{
+		$$ = TYPE_SIZE(ANODE_TYPE($2));
+	}
+	| SIZEOF '(' type_name ')'{
+		$$ = TYPE_SIZE(ANODE_TYPE($3));
+	}
 	;
 
 unary_operator
@@ -272,7 +287,10 @@ cast_expression
 	: unary_expression{
 		$$ = $1;
 	}
-	| '(' type_name ')' cast_expression
+	| '(' type_name ')' cast_expression{
+		ANODE_TYPE($4) = $2;
+		$$ = $4;
+	}
 	;
 
 multiplicative_expression
@@ -281,12 +299,15 @@ multiplicative_expression
 	}
 	| multiplicative_expression '*' cast_expression {
 		//$$ = new AST_bin('*', $1, $3);
+		$$ = build_stmt(MULT_EXPR, $1, $3);
 	}
 	| multiplicative_expression '/' cast_expression {
 		//$$ = new AST_bin('/', $1, $3);
+		$$ = build_stmt(TRUNC_DIV_EXPR, $1, $3);
 	}
 	| multiplicative_expression '%' cast_expression {
 		//$$ = new AST_bin('%', $1, $3);
+		$$ = build_stmt(TRUNC_MOD_EXPR, $1, $3);
 	}
 	;
 
@@ -295,10 +316,10 @@ additive_expression
 		$$ = $1;
 	}
 	| additive_expression '+' multiplicative_expression {
-		//$$ = new AST_bin('+', $1, $3);
+		$$ = build_stmt(PLUS_EXPR, $1, $3);
 	}
 	| additive_expression '-' multiplicative_expression {
-		//$$ = new AST_bin('-', $1, $3);
+		$$ = build_stmt(MINUS_EXPR, $1, $3);
 	}
 	;
 
@@ -306,68 +327,96 @@ shift_expression
 	: additive_expression{
 		$$ = $1;
 	}
-	| shift_expression LEFT_OP additive_expression
-	| shift_expression RIGHT_OP additive_expression
+	| shift_expression LEFT_OP additive_expression{
+		$$ = build_stmt(LSHIFT_EXPR, $1, $3);
+	}
+	| shift_expression RIGHT_OP additive_expression{
+		$$ = build_stmt(RSHIFT_EXPR, $1, $3);
+	}
 	;
 
 relational_expression
 	: shift_expression{
 		$$ = $1;
 	}
-	| relational_expression '<' shift_expression
-	| relational_expression '>' shift_expression
-	| relational_expression LE_OP shift_expression
-	| relational_expression GE_OP shift_expression
+	| relational_expression '<' shift_expression{
+		$$ = build_stmt(LT_EXPR, $1, $3);
+	}
+	| relational_expression '>' shift_expression{
+		$$ = build_stmt(GT_EXPR, $1, $3);
+	}
+	| relational_expression LE_OP shift_expression{
+		$$ = build_stmt(LE_EXPR, $1, $3);
+	}
+	| relational_expression GE_OP shift_expression{
+		$$ = build_stmt(GE_EXPR, $1, $3);
+	}
 	;
 
 equality_expression
 	: relational_expression{
 		$$ = $1;
 	}
-	| equality_expression EQ_OP relational_expression
-	| equality_expression NE_OP relational_expression
+	| equality_expression EQ_OP relational_expression{
+		$$ = build_stmt(EQ_EXPR, $1, $3);
+	}
+	| equality_expression NE_OP relational_expression{
+		$$ = build_stmt(NE_EXPR, $1, $3);
+	}
 	;
 
 and_expression
 	: equality_expression{
 		$$ = $1;
 	}
-	| and_expression '&' equality_expression
+	| and_expression '&' equality_expression{
+		$$ = build_stmt(BIT_AND_EXPR, $1, $3);
+	}
 	;
 
 exclusive_or_expression
 	: and_expression{
 		$$ = $1;
 	}
-	| exclusive_or_expression '^' and_expression
+	| exclusive_or_expression '^' and_expression{
+		$$ = build_stmt(BIT_XOR_EXPR, $1, $3);
+	}
 	;
 
 inclusive_or_expression
 	: exclusive_or_expression{
 		$$ = $1;
 	}
-	| inclusive_or_expression '|' exclusive_or_expression
+	| inclusive_or_expression '|' exclusive_or_expression{
+		$$ = build_stmt(BIT_IOR_EXPR, $1, $3);
+	}
 	;
 
 logical_and_expression
 	: inclusive_or_expression{
 		$$ = $1;
 	}
-	| logical_and_expression AND_OP inclusive_or_expression
+	| logical_and_expression AND_OP inclusive_or_expression{
+		$$ = build_stmt(TRUTH_ANDIF_EXPR, $1, $3);
+	}
 	;
 
 logical_or_expression
 	: logical_and_expression{
 		$$ = $1;
 	}
-	| logical_or_expression OR_OP logical_and_expression
+	| logical_or_expression OR_OP logical_and_expression{
+		$$ = build_stmt(TRUTH_ORIF_EXPR, $1, $3);
+	}
 	;
 
 conditional_expression
 	: logical_or_expression {
 		$$ = $1;
 	}
-	| logical_or_expression '?' expression ':' conditional_expression
+	| logical_or_expression '?' expression ':' conditional_expression{
+		$$ = build_stmt(COND_EXPR, $1, $3, $5);
+	}
 	;
 
 assignment_expression
@@ -377,7 +426,7 @@ assignment_expression
 	}
 	| unary_expression assignment_operator assignment_expression {
 		check("赋值表达式");
-	
+		$$ = build_stmt(MODIFY_EXPR, $1, $3);
 		//$$ = new AST_assignment($1,$3);
 	
 		
@@ -406,7 +455,9 @@ expression
 		$$ = $1;
 
 	}
-	| expression ',' assignment_expression
+	| expression ',' assignment_expression{
+		check("not support yet");
+	}
 	;
 
 constant_expression
@@ -421,18 +472,20 @@ declaration
 		anode t;
 		for (t = $2; t; t = ANODE_CHAIN(t)){
 			ANODE_TYPE(ANODE_VALUE(t)) = $1;
-			anode d = build_decl($1, ANODE_VALUE(t));
+			anode d = build_var_decl($1, ANODE_VALUE(t));
 			push_decl(d);
+			$$ = d;
 			check("Full 声明 (%s %s = c)",	
 				anode_code_name(anode_code(ANODE_TYPE(ANODE_VALUE(t)))),
 				IDENTIFIER_POINTER(decl_name(ANODE_VALUE(t))),current_declspaces);
 
 		}
 		/* 从 decl_specifiers里提取type_specifier */
+
 		
 	} //完整声明 包含变量名 或 初值 、类型
 	;
-hook_set :{printf("hook_set\n");};
+
 
 declaration_specifiers   // 各种声明类型
 	: storage_class_specifier{
@@ -488,6 +541,7 @@ init_declarator
 	| declarator ASSIGN initializer {
 		check("one declarator+assign");
 		$$ = $1;
+		build_stmt(INIT_EXPR, $1, $3);
 		ANODE_($$, anode_decl)->initial = $3;
 		// if initializer is constant, just store within the Fvalue $->ir;
 		//$$ = new AST_decl_var($1, $3);
@@ -509,7 +563,10 @@ type_specifier
 	}
 	| SHORT
 	| INT {
-		$$ = new anode_type(INTEGER_TYPE);
+		anode_type *t = new anode_type(INTEGER_TYPE);
+		TYPE_SIZE(t) = new anode_int_cst(sizeof(HOST_WIDTH_INT));
+		$$ = t;
+
 		//$$ = new BuiltinType(BuiltinType::Integer);
 		//$$->ast_type = llvm::Type::getInt32Ty(*llvm_context);
 		//std::cout << "hello type_specifier" << std::endl;
@@ -617,6 +674,7 @@ direct_declarator /* 代表所有声明语句中的变量 */
 		t->code = VAR_DECL;
 		$$ = t;
 		check("(identifier_declartor %s)", $1);
+		//$$ = new anode_identifier($1);
 		free($1);
 
 	}
@@ -633,6 +691,7 @@ direct_declarator /* 代表所有声明语句中的变量 */
 	| direct_declarator '[' ']'{check("1");}
 	| direct_declarator '(' parameter_type_list ')' {
 		check("函数_declarator");
+		$$ = build_func_decl($1, $3);
 	
 		// AST_proto 复杂添加符号表
 		//$$ = new AST_proto($1->get_name(),$3->get_args());
@@ -679,26 +738,19 @@ parameter_type_list
 parameter_list
 	: parameter_declaration {
 	check("Push SymbolTable 函数参数>>>");
+		$$ = build_list(NULL, $1);
 			
-			/*
-			$$ = new AST_args;
-			$$->add_args($1->declarator->get_name(), $1->getInfo());
-			parameter_list_num++;
-			$$->context = $1->context;
-			*/
 	}
 	
 	| parameter_list ',' parameter_declaration{
-	/*
-			$$->add_args($3->declarator->get_name(), $3->getInfo());
-			parameter_list_num++;
-			$$->context = $1->context;
-			*/
+		$$ = chain_cat($1, $3);
+
 	}
 	;
 
 parameter_declaration
 	: declaration_specifiers declarator{
+		build_parm_decl($1, $2);
 			check("参数");// 类型 + 变量
 		/*
 			ASTContext *c = NULL;
@@ -803,18 +855,19 @@ labeled_statement
 compound_statement
 	: LEFT_BRACE RIGHT_BRACE{
 		check(" { }");
+		$$ = build_stmt(COMPOUND_STMT, NULL);
 	}
-	| LEFT_BRACE {
-			printf("push_namespace\n");
-			push_namespace();
-	
-		}
-		block_item_list RIGHT_BRACE {
+	| LEFT_BRACE 
+	{
+		printf("push_namespace\n");
 
-		$$ = $3;
-		//$$->context = $1;
-		//for_each_decl(print_decl);
-		pop_namespace();
+	
+	}
+	block_item_list RIGHT_BRACE {
+		$$ = build_stmt(COMPOUND_STMT, $3);
+		printf("c_c %s\n", anode_code_name(anode_code($$)));
+
+
 
 	}
 	;
@@ -822,11 +875,10 @@ compound_statement
 block_item_list
 	: block_item  { 
 
-		$$ = build_list(NULL, $1);
+		$$ = $1;
 	}
 	| block_item_list block_item{
-
-		$$ = anode_cons(NULL, $2, $1);
+		$$ = chain_cat($1, $2);
 	}
 	;
 
@@ -844,7 +896,7 @@ block_item
 	;
 
 expression_statement
-	: ';'
+	: ';' {$$ = NULL;}
 	| expression ';'  {
 		check("expression");
 		$$ = $1;
@@ -888,6 +940,7 @@ jump_statement
 translation_unit	/*  everything starts here  */
 	: {check("empty source file");}
 	| external_declaration {
+		top_ast_node = $1;
 		check("finish all");
 		/* parse the ast now */
 		for_each_decl(print_decl);
@@ -896,16 +949,23 @@ translation_unit	/*  everything starts here  */
 
 	}
 	| translation_unit external_declaration {
+		top_ast_node = chain_cat(top_ast_node, $2);
 		check("finish empty");
 				/* parse the ast now */
-		for_each_decl(print_decl);
+
+//		anode t = lookup_name_current_bb("hello");
+
+//		anode id = get_declspace_identifier(t);
+		
 
 	}
 	;
 
 external_declaration
 	: function_definition
+
 	| declaration
+
 	;
 
 function_definition
@@ -918,6 +978,7 @@ function_definition
 	| declaration_specifiers declarator compound_statement{
 		check("function_define");
 		check("此时SymbolTable在proto(declrator)==$2里");
+		$$ = $3;
 
 
 	}

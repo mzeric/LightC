@@ -2,44 +2,34 @@
 #include <vector>
 #include <map>
 #include "anode.h"
+#include "pass.h"
 using namespace std;
+struct basic_block_s entry_exit_blocks[2];
 
-struct basic_block{
-	vector<struct basic_block*> pred,succ;
-	anode entry;
-	anode exit;
-	anode stmt_list;
-};
+struct basic_block_s *current_bb;
+anode bb_node = NULL;
+void push_block_note(){
+	anode_list *l = new anode_list();
+	ANODE_VALUE(l) = bb_node;
+	current_declspaces = anode_cons(NULL, l, current_declspaces);
+}
+void push_ssa_decl(anode id, anode value){
 
-struct cfg_struct{
-};
-#if 0
-map<map<basic_block*,tree>, tree> currentDef;
-void split_while(tree t, basic_block bb){
+      ANODE_CHECK(id, IDENTIFIER_NODE);
+      current_declspaces = anode_cons(value, id, current_declspaces);
+
 
 }
-void naming_it(tree var){}
-/* recursive build ssa while cfg */
-bool is_branch(tree t){
-	switch(TREE_CODE(t)){
-		case WHILE_STMT:
-		case FOR_STMT:
-		case IF_STMT:
-			return true;
-		default:
-			return false;
-	}
+void  ssa_write(anode id, anode value){
+      push_ssa_decl(id, value);
 }
-#endif
-void build_func_ssa(anode func){
+anode ssa_read(const char *name){
+      anode t = lookup_name_current_bb(name);
+      if(t)
+      	    return t;
 
-	// for each stmt s
-	//
-	// if(is_branch(s)) {
-	// }
 }
-int t_main(){
 
-
-	return 0;
+anode build_bb(anode l){
+	
 }

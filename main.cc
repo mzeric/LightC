@@ -21,5 +21,7 @@ int main(){
 	yydebug = 0;
         c_parse_init();
 	yyparse();
+	fflush(stdin);
 	printf("after all\n");
+	dump_block_list(top_ast_node, 0);
 }
