@@ -29,7 +29,61 @@ anode ssa_read(const char *name){
       	    return t;
 
 }
+anode function_body(anode f){
+		return NULL;
+}
+int is_branch(anode t){
+        switch(anode_code(t)){
+            case IF_STMT:
+            case WHILE_STMT:
+			case FOR_STMT:
+            return 1;
+        }
+        return 0;
+}
+bb new_basic_block(anode s, bb old){
 
-anode build_bb(anode l){
+}
+void current_def(anode decl){
+
+}
+void bb_add_stmt(bb b, anode s){
+
+}
+void bb_split_before(anode *body, anode *s){
+	
+		anode old_stmt = *s;
+}
+/*
+	parm must be the function body
+*/
+anode build_cfg(anode body){
+	
+	int need_new = 1;
+	int first = 1;
+	basic_block_t *b;
+	anode stmt = body;
+	while(stmt){
+
+		if(need_new){
+			
+			if(!first){
+				bb_split_before(&body, &stmt);
+				first = 0;
+			}
+			b = new_basic_block(body, b);
+			need_new = 0;
+		}
+
+		bb_add_stmt(b, stmt);
+		
+		if(is_branch(stmt)){
+			need_new = 1;
+		}
+
+
+		stmt = ANODE_CHAIN(stmt);
+		first = 0;
+	}
 	
 }

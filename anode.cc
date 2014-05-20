@@ -159,20 +159,6 @@ void push_decl(anode decl){
 }
 /* the redefine value stored in anode_list->purpose */
 
-int is_branch(anode t){
-        switch(anode_code(t)){
-            case IF_STMT:
-            case WHILE_STMT:
-            return 1;
-        }
-        return 0;
-}
-bb new_basic_block(){
-
-}
-void current_def(anode decl){
-
-}
 
 
 /* basic block cfg */
