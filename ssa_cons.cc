@@ -56,6 +56,7 @@ void bb_split_before(anode *body, anode *s){
 }
 /*
 	parm must be the function body
+	lower the if_stmt to cond as cfg
 */
 anode build_cfg(anode body){
 	
@@ -78,6 +79,15 @@ anode build_cfg(anode body){
 		bb_add_stmt(b, stmt);
 		
 		if(is_branch(stmt)){
+			switch(anode_code(stmt)){
+				case IF_STMT:
+					break;
+				case WHILE_STMT:
+					break;
+				case FOR_STMT:
+					break;
+				default:;
+			}
 			need_new = 1;
 		}
 
