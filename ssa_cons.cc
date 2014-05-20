@@ -2,7 +2,7 @@
 #include <vector>
 #include <map>
 #include "anode.h"
-#include "pass.h"
+
 using namespace std;
 struct basic_block_s entry_exit_blocks[2];
 

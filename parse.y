@@ -4,7 +4,7 @@
 
 #include "anode.h"
 #include "lexer.h"
-
+#define _GNU_SOURCE
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdarg.h>
@@ -33,9 +33,10 @@ extern "C" void check(const char *msg, ...){
 	va_list vp;
 	char *buf = NULL;
 	va_start(vp, msg);
-	asprintf(&buf, "%s\n", msg);
-	vprintf(buf, vp);
-	free(buf);
+
+	vprintf(msg, vp);
+	puts("");
+
 	va_end(vp);
 }
 
