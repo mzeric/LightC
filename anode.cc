@@ -161,45 +161,6 @@ void push_decl(anode decl){
 
 
 
-/* basic block cfg */
-edge get_edge(bb src, bb dst){
-        edge e;
-        for (e = src->succ; e; e = e->succ_next){
-            if (e->dst == dst){
-                return e;
-            }
-        }
-        return NULL;
-}
-edge make_edge(bb src, bb dst, int flag){
-
-        edge e;
-        if ((e = get_edge(src, dst)))
-            return e;
-
-        e = (edge)malloc(sizeof(edge_t));
-        e->succ_next = src->succ;
-        e->pred_next = dst->pred;
-
-        e->src = src;
-        e->dst = dst;
-        e->flag = flag;
-
-        src->succ = e;
-        dst->pred = e;
-
-        return e;
-
-}
-void free_edge(edge e){
-        free(e);
-}
-void remove_edge(edge e){
-
-}
-void dump_edge_info(edge e){
-
-}
 anode chain_last(anode chain){
         anode t = chain;
         while(ANODE_CHAIN(t))

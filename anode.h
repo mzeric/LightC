@@ -57,7 +57,7 @@ void anode_operand_check_failed (int idx, int  code, const char *file,
     __t;})
 
 #define ANODE_OPERAND_CHECK(T, I) __extension__                         \
-(*({ __typeof(T) __t = (T);                                             \
+(*({ anode_expr *__t = (anode_expr*)(T);                                             \
         const int __i = (I);                                            \
         if (__i < 0 || __i >= anode_code_length(anode_code(T)))         \
             anode_operand_check_failed (__i, anode_code(__t),           \
@@ -74,12 +74,13 @@ void anode_operand_check_failed (int idx, int  code, const char *file,
             __FUNCTION__);                                              \
     &__t->operands[__i];}))
 
-
+struct basic_block_s;
 class anode_node{
 public:
         anode           chain;
         unsigned        code;
         anode           type; /* each has a type info */
+        struct basic_block_s *basic_block;
 
         unsigned side_effects_flag : 1;
         unsigned constant_flag : 1;
