@@ -73,7 +73,7 @@ edge make_edge(bb src, bb dst, int flag){
         	return NULL;
         if ((e = get_edge(src, dst)))
             return e;
-
+    	printf("link %d -> %d\n", src->index, dst->index);
         e = (edge)malloc(sizeof(edge_t));
         e->succ_next = src->succ;
         e->pred_next = dst->pred;
@@ -158,6 +158,8 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	make_edge(then_bb, if_exit, 0);
 	if(else_stmt)
 		make_edge(else_bb, if_exit, 0);
+	else
+		make_edge(if_bb, if_exit, 0);
 
 	return if_exit;
 
