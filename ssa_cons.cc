@@ -45,32 +45,32 @@ int is_branch(anode t){
 void current_def(anode decl){
 
 }
-void bb_add_stmt(bb b, anode s){
+void bb_add_stmt(basic_block_t *b, anode s){
+	anode last = build_list(NULL, s);
+
+	b->entry = anode_cat(b->exit, last);
+	b->exit = last;
 	s->basic_block = b;
 }
-bb new_basic_block(anode head, anode end, bb ahead){
+/*
+	head is the first stmt of bb
+*/
+basic_block_t *new_basic_block(anode head, bb ahead){
 	bb b = (bb)malloc(sizeof(*b));
-	b->head = head;
-	b->exit = end;
-	ahead->next = b;
+	memset(b, 0, sizeof(*b));
+	if(head){
+		b->entry = build_list(NULL, head);
+		head->basic_block = b;
+	}
+	b->exit = b->entry;
+	if(ahead)
+		ahead->next = b;
 	b->prev = ahead;
 }
-/*
-	cut the body's chain before s
-	end the basic_block_t previous
-*/
-void bb_split_after(anode *first, anode *after){
-	if(after == NULL)
-		return;
-	if(*after)
-		(*after)->chain = NULL;
-	(*first)->basic_block->exit = *after;
-	if(*after)
-		*first = (*after)? (*after)->chain:NULL;
-}
+
 basic_block_t *bb_fork_after(anode *first, anode *after, basic_block_t *prev_bb){
-	bb_split_after(first, after);
-	return new_basic_block(*first, NULL, prev_bb);
+	//bb_split_after(first, after);
+	return new_basic_block(*first, prev_bb);
 }
 /*
 
@@ -120,7 +120,7 @@ void dump_edge_info(edge e){
 	lower the if_stmt to cond as cfg
 */
 basic_block_t *build_cfg(anode body);
-anode build_if_cfg(anode if_stmt){
+basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *ahead){
 
 	anode if_cond = IF_COND(if_stmt);
 	anode then_stmt = THEN_CLAUSE(if_stmt);
@@ -129,27 +129,25 @@ anode build_if_cfg(anode if_stmt){
 	bb if_bb = build_cfg(if_cond);
 	bb then_bb = build_cfg(then_stmt);
 	bb else_bb = build_cfg(else_stmt);
+	bb if_exit;
 
 
+	return if_exit;
 
 }
 basic_block_t *build_cfg(anode body){
 	
-	int need_new = 1;
-	int first = 1;
-	basic_block_t *b = ENTRY_BLOCK_PTR;
+	int need_new = 0;
+
+	basic_block_t *h = new_basic_block(NULL, NULL);
+	basic_block_t *b = h;
 	anode stmt = body;
 	anode prev_stmt = NULL;
 	while(stmt){
 
 		if(need_new){
 			
-			if(!first){
-				//bb_split_before(&body, &stmt);
-				bb_split_after(&body, &prev_stmt);
-
-			}
-			b = new_basic_block(body, NULL, b);
+			b = new_basic_block(NULL, b);
 			need_new = 0;
 		}
 
@@ -158,10 +156,8 @@ basic_block_t *build_cfg(anode body){
 		if(is_branch(stmt)){
 			switch(anode_code(stmt)){
 				case IF_STMT:
-					build_if_cfg(stmt);
-					bb_split_after(&body, &prev_stmt);
-					b = new_basic_block(body, NULL, b);
-					bb_add_stmt(b, stmt);
+					b = build_if_cfg(stmt, b);/* return if_exit */
+
 					break;
 				case WHILE_STMT:
 					break;
@@ -169,13 +165,12 @@ basic_block_t *build_cfg(anode body){
 					break;
 				default:;
 			}
-			need_new = 1;
+			need_new = 1;/* seperate xx_exit empty bb */
 		}
 
 		prev_stmt = stmt;
 		stmt = ANODE_CHAIN(stmt);
-		first = 0;
 	}
-	return b;
+	return h;
 	
 }

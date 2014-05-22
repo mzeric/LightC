@@ -377,9 +377,9 @@ struct edge_s;
 
 typedef struct basic_block_s{
         struct basic_block_s    *prev, *next; /* the chain */
-        anode                   list;
+        anode                   list;		/* use list to link stmt inside bb instead modify The AST */
         anode                   outer_loop; /* outer loop for break */
-        anode                   head, exit; /* first & last node of the block */
+        anode                   entry, exit; /* first & last node of the block */
         struct edge_s           *pred, *succ; /* edges in / out of the block */
         anode                   decl; /* store the current_declspaces */
 
@@ -411,6 +411,6 @@ anode build_func_decl(anode declar, anode params);
 anode build_decl(anode speci, anode declar);
 anode build_parm_decl(anode a, anode b);
 
-
+#define anode_cat chain_cat
 
 #endif
