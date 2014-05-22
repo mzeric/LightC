@@ -43,6 +43,9 @@ void dump_block_list(anode l, int level){
         }
 
 }
+void dump_stmt(anode stmt){
+
+}
 anode decl_declar(anode node){
         return ANODE_CLASS_CHECK(ANODE_(node, anode_decl), 'd')->name;
 }

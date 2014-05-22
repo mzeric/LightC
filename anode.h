@@ -347,6 +347,8 @@ public:
 #define THEN_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 1)
 #define ELSE_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 2)
 
+#define COMPOUND_STMT_CHECK(t)  ANODE_CHECK(t, COMPOUND_STMT)
+#define COMPOUND_BODY(t)        ANODE_OPERAND(COMPOUND_STMT_CHECK(t), 0)
 
 anode decl_name(anode node);
 
@@ -374,14 +376,18 @@ int     is_branch(anode t);
     about Basic Block Construction
 */
 struct edge_s;
-
+enum bb_flags{
+    EDGE_PASSTHOUGH,
+};
 typedef struct basic_block_s{
+        unsigned                index; /* used for goto expr */
         struct basic_block_s    *prev, *next; /* the chain */
         anode                   list;		/* use list to link stmt inside bb instead modify The AST */
         anode                   outer_loop; /* outer loop for break */
         anode                   entry, exit; /* first & last node of the block */
         struct edge_s           *pred, *succ; /* edges in / out of the block */
         anode                   decl; /* store the current_declspaces */
+        char                    *comment;
 
 }basic_block_t, *bb;
 
@@ -393,8 +399,8 @@ typedef struct edge_s{
 
 }edge_t, *edge;
 extern struct basic_block_s entry_exit_blocks[2];
-#define ENTRY_BLOCK_PTR (&entry_exit_blocks[0]);
-#define EXIT_BLOCK_PTR (&entry_exit_blocks[1]);
+#define ENTRY_BLOCK_PTR (&entry_exit_blocks[0])
+#define EXIT_BLOCK_PTR (&entry_exit_blocks[1])
 
 edge make_edge(bb src, bb dst, int flag);
 edge get_edge(bb src, bb dst);
@@ -412,5 +418,10 @@ anode build_decl(anode speci, anode declar);
 anode build_parm_decl(anode a, anode b);
 
 #define anode_cat chain_cat
+
+basic_block_t *build_cfg(anode s, basic_block_t*b, basic_block_t *e, const char*c);
+void dump_bb(basic_block_t* t);
+void dump_stmt(anode s);
+void dump_edges(basic_block_t *e);
 
 #endif
