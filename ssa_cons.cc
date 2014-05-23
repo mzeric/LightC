@@ -176,6 +176,13 @@ basic_block_t *build_compound_cfg(anode cp_stmt, basic_block_t *list, basic_bloc
 
 	return b;
 }
+basic_block_t *build_while_cfg(anode w_stmt, basic_block_t *list, basic_block_t *before){
+
+	return NULL;
+}
+basic_block_t *build_for_cfg(anode for_stmt, basic_block_t *list, basic_block_t *before){
+	return NULL;
+}
 basic_block_t *build_cfg(anode start_stmt, basic_block_t *list, basic_block_t *before,
 			const char* comment){
 	
@@ -249,5 +256,10 @@ void dump_bb(basic_block_t *start_bb){
 	}
 }
 void dump_edges(basic_block_t *start_bb){
+
+}
+
+anode is_block_def_visiable(basic_block_t *from, basic_block_t *to, aode *def){
+
 
 }
