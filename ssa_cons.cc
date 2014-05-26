@@ -169,8 +169,10 @@ basic_block_t *build_compound_cfg(anode cp_stmt, basic_block_t *list, basic_bloc
 	/*
 		prepare the { push_decl_space
 	*/
-	anode old_c = current_decl_context;
-	current_decl_context = COMPOUND_DS_OUTER((anode_expr*)cp_stmt);
+
+	anode old_c = COMPOUND_DS_OUTER((anode_expr*)cp_stmt);
+	current_decl_context = old_c;
+
 	basic_block_t *b = build_cfg(s, list, before, "compound");
 	current_decl_context = old_c;
 
@@ -270,6 +272,11 @@ void dump_bb(basic_block_t *start_bb){
 		for (anode p = b->phi; p; p = p->chain){
 			printf("\tphi %x\n", p);
 		}
+		printf("pred:\t");
+		for (edge e = b->pred; e; e = e->pred_next){
+			printf(" %d", e->src->index);
+		}
+		printf("\n");
 
 		for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
 			i++;
@@ -282,15 +289,18 @@ void dump_bb(basic_block_t *start_bb){
 void dump_edges(basic_block_t *start_bb){
 
 }
-
+/*
+	SSA Construction
+*/
 anode _get_def(const char* name, bb b){
-
+	int i = 0;
 	for (anode t = b->decl_current; t; t = ANODE_CHAIN(t)){
 		anode d = decl_name(ANODE_VALUE(t));
-
 		if(strcmp(IDENTIFIER_POINTER(d), name) == 0)
 			return ANODE_VALUE(t);
+		i++;
 	}
+	printf("find %s failed\n", name);
 	return &undefine_variable;
 }
 anode get_def(anode id, bb b){
@@ -309,13 +319,17 @@ anode add_phi_operands(anode, anode);
 anode read_var_recursive(anode id, basic_block_t *b){
 	anode val;
 	int i = 0;
+	if(!b->filled){
+		printf("fill %d from recursive\n", b->index);
+		fill_bb(b);
+	}
 	for(edge e = b->pred; e; e = e->pred_next){
 		i++;
 	}
 	if(i == 1)
 		val = read_variable(id, b->pred->src);
 	else{
-		exit(1);
+
 		val = new_phi(b);
 		write_variable(id, val, b);
 		val = add_phi_operands(id, val);
@@ -325,6 +339,10 @@ anode read_var_recursive(anode id, basic_block_t *b){
 }
 anode read_variable(anode id, basic_block_t *b){
 	assert(anode_code_class(anode_code(id)) == 'd');
+	if(!b->filled){
+		printf("fill %d\n", b->index);
+		fill_bb(b);
+	}
 	if ((*b->ssa_table)[id])
 		return (*b->ssa_table)[id];
 	return read_var_recursive(id, b);

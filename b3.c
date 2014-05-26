@@ -7,7 +7,7 @@ int func(void){
 	if(d > 2){
 		int f1;
 		if(1){f1 = 3;d=1;}
-		d = 3;
+		f1 = 3;
 	}else{
 
 		int f2;
