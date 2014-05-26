@@ -1,5 +1,8 @@
 #include "decl.h"
 
+anode bb_node = NULL;
+
+
 void print_decl(anode node){
         if(!node)
                 printf("type: null\tname: null\n");
@@ -46,6 +49,33 @@ void dump_block_list(anode l, int level){
 void dump_stmt(anode stmt){
 
 }
+
+void push_namespace(void){
+        declspace_stack = anode_cons(NULL, current_declspaces, declspace_stack);
+}
+void pop_namespace(void){
+        current_declspaces = ANODE_VALUE(declspace_stack);
+        declspace_stack = ANODE_CHAIN(declspace_stack);
+
+}
+void push_decl(anode decl){
+        /* only need to move the current_decl */
+        anode_decl *d = ANODE_(ANODE_CLASS_CHECK(decl, 'd'), anode_decl);
+        current_declspaces = anode_cons(NULL, d, current_declspaces);
+}
+void push_block_note(){
+        anode_list *l = new anode_list();
+        ANODE_VALUE(l) = bb_node;
+        current_declspaces = anode_cons(NULL, l, current_declspaces);
+}
+void push_ssa_decl(anode id, anode value){
+
+      ANODE_CHECK(id, IDENTIFIER_NODE);
+      current_declspaces = anode_cons(value, id, current_declspaces);
+
+
+}
+
 anode decl_declar(anode node){
         return ANODE_CLASS_CHECK(ANODE_(node, anode_decl), 'd')->name;
 }

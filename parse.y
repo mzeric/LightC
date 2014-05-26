@@ -132,6 +132,7 @@ extern "C" void check(const char *msg, ...){
 %type <ast_node>    initializer
 %type <ast_node>    statement
 %type <ast_node>    selection_statement
+%type <ast_node>    iteration_statement
 %type <ast_node>    expression_statement
 %type <ast_node>    block_item
 %type <ast_expr_list>    block_item_list
@@ -859,16 +860,21 @@ compound_statement
 		$$ = build_stmt(COMPOUND_STMT, NULL);
 	}
 	| LEFT_BRACE 
-	{
+	{	
+		push_namespace();
+
 		printf("push_namespace\n");
 
 	
 	}
 	block_item_list RIGHT_BRACE {
-		$$ = build_stmt(COMPOUND_STMT, $3);
-		printf("c_c %s\n", anode_code_name(anode_code($$)));
-
-
+		anode_expr *t = (anode_expr*)build_stmt(COMPOUND_STMT, $3);
+		printf("c_c %s\n", anode_code_name(anode_code(t)));
+		COMPOUND_DS_INTER(t) = current_declspaces;
+		/* calculate the outer decl_space that in real need */
+		COMPOUND_DS_OUTER(t) = ANODE_VALUE(declspace_stack);
+		$$ = t;
+		pop_namespace();
 
 	}
 	;
@@ -919,7 +925,9 @@ selection_statement
 	;
 
 iteration_statement
-	: WHILE '(' expression ')' statement
+	: WHILE '(' expression ')' statement{
+		$$ = build_stmt(WHILE_STMT, $3, $5);
+	}
 	| DO statement WHILE '(' expression ')' ';'
 	| FOR '(' expression_statement expression_statement ')' statement
 	| FOR '(' expression_statement expression_statement expression ')' statement

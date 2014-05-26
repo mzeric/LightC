@@ -316,3 +316,5 @@ DEFTREECODE (SCOPE_STMT, "scope_stmt", 'e', 1)
 DEFTREECODE (CASE_LABEL, "case_label", 'e', 3)
 DEFTREECODE (STMT_EXPR, "stmt_expr", 'e', 1)
 DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
+
+DEFTREECODE (IR_PHI, "ir_phi", 'g', 0)

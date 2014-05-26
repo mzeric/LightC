@@ -143,20 +143,6 @@ anode anode_cons(anode purpose, anode value, anode chain){
         return l;
 }
 
-void push_namespace(void){
-        declspace_stack = anode_cons(NULL, current_declspaces, declspace_stack);
-}
-void pop_namespace(void){
-        current_declspaces = ANODE_VALUE(declspace_stack);
-        declspace_stack = ANODE_CHAIN(declspace_stack);
-        if(current_bb)
-            current_bb->decl = current_declspaces;
-}
-void push_decl(anode decl){
-        /* only need to move the current_decl */
-        anode_decl *d = ANODE_(ANODE_CLASS_CHECK(decl, 'd'), anode_decl);
-        current_declspaces = anode_cons(NULL, d, current_declspaces);
-}
 /* the redefine value stored in anode_list->purpose */
 
 

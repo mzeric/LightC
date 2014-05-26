@@ -5,6 +5,8 @@
 #include <assert.h>
 #include <string.h>
 #include <stdarg.h>
+#include <string>
+#include <map>
 
 #define DEFTREECODE(sym, name, type, len) sym,
 enum anode_code{
@@ -304,6 +306,7 @@ public:
             memset(operands, 0, sizeof(anode) * len);
 
             code = c;
+            //compound_decl_list = NULL;
         }
         ~anode_expr(){
             free(operands);
@@ -311,6 +314,8 @@ public:
 public:
         int comp;
         anode *operands;
+        anode compound_decl_list_inter;
+        anode compound_decl_list_outer;
 
 };
 class anode_block : public anode_node {
@@ -349,6 +354,8 @@ public:
 
 #define COMPOUND_STMT_CHECK(t)  ANODE_CHECK(t, COMPOUND_STMT)
 #define COMPOUND_BODY(t)        ANODE_OPERAND(COMPOUND_STMT_CHECK(t), 0)
+#define COMPOUND_DS_INTER(t)    ANODE_CHECK(t, COMPOUND_STMT)->compound_decl_list_inter
+#define COMPOUND_DS_OUTER(t)    ANODE_CHECK(t, COMPOUND_STMT)->compound_decl_list_outer
 
 anode decl_name(anode node);
 
@@ -386,8 +393,13 @@ typedef struct basic_block_s{
         anode                   outer_loop; /* outer loop for break */
         anode                   entry, exit; /* first & last node of the block */
         struct edge_s           *pred, *succ; /* edges in / out of the block */
-        anode                   decl; /* store the current_declspaces */
+        anode                   decl_context; /* store the current_declspaces */
+        anode                   decl_current;
         char                    *comment;
+        std::map<anode, anode>  *ssa_table;
+        int                     filled;
+
+        anode                   phi;   /* all phi instructs linked by ->chain */
 
 }basic_block_t, *bb;
 
@@ -398,7 +410,27 @@ typedef struct edge_s{
         int                     flag;
 
 }edge_t, *edge;
+class anode_phi : public anode_node {
+public:
+        anode_phi(basic_block_t *b):block(b){
+            targets = NULL;
+            this->chain = b->phi;
+            b->phi = (anode)this;
+
+            code = IR_PHI;
+
+        }
+        void append_operand(anode n){
+            n->chain = targets;
+            targets = n;
+        }
+public:
+        basic_block_t *block;
+        anode targets;
+};
+
 extern struct basic_block_s entry_exit_blocks[2];
+
 #define ENTRY_BLOCK_PTR (&entry_exit_blocks[0])
 #define EXIT_BLOCK_PTR (&entry_exit_blocks[1])
 
@@ -423,5 +455,7 @@ basic_block_t *build_cfg(anode s, basic_block_t*b, basic_block_t *e, const char*
 void dump_bb(basic_block_t* t);
 void dump_stmt(anode s);
 void dump_edges(basic_block_t *e);
+void fill_bb(basic_block_t *b);
+void build_ssa(basic_block_t *b);
 
 #endif

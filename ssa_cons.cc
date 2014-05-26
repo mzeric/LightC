@@ -1,6 +1,9 @@
 #include <stdio.h>
 #include <vector>
+#include <string>
 #include <map>
+#include <iostream>
+
 #include "anode.h"
 
 using namespace std;
@@ -9,22 +12,13 @@ struct basic_block_s entry_exit_blocks[2];
 static unsigned global_bb_index = 0;
 
 struct basic_block_s *current_bb;
-anode bb_node = NULL;
 
+anode current_decl_context = NULL;
 
+anode_node undefine_variable;
 
-void push_block_note(){
-	anode_list *l = new anode_list();
-	ANODE_VALUE(l) = bb_node;
-	current_declspaces = anode_cons(NULL, l, current_declspaces);
-}
-void push_ssa_decl(anode id, anode value){
+map<string, pair<anode, anode> > t;
 
-      ANODE_CHECK(id, IDENTIFIER_NODE);
-      current_declspaces = anode_cons(value, id, current_declspaces);
-
-
-}
 void  ssa_write(anode id, anode value){
       push_ssa_decl(id, value);
 }
@@ -122,6 +116,11 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	if(comment)
 	b->comment = strdup(comment);
 	b->index = global_bb_index++;
+	b->decl_context = current_decl_context;
+	b->decl_current = b->decl_context;
+	b->ssa_table = new map<anode, anode>;
+	b->filled = 0;
+	b->phi = NULL;
 
 
 	return b;
@@ -146,11 +145,11 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 
 	if_bb = build_cfg(if_cond, list, before, "if_cond");
 	//FIXME shall we need the then_entry empty-bb
-	then_bb = build_cfg(COMPOUND_BODY(then_stmt), if_bb, if_bb, "then ");
+	then_bb = build_cfg(then_stmt, if_bb, if_bb, "then ");
 
 	else_bb = then_bb;
 	if(else_stmt){
-		else_bb = build_cfg(COMPOUND_BODY(else_stmt), then_bb, if_bb, "else ");
+		else_bb = build_cfg(else_stmt, then_bb, if_bb, "else ");
 
 	}
 	if_exit = new_basic_block(NULL, else_bb, "if_exit");
@@ -167,10 +166,17 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 basic_block_t *build_compound_cfg(anode cp_stmt, basic_block_t *list, basic_block_t *before){
 	printf("build_compound_cfg\n");
 	anode s = COMPOUND_BODY(cp_stmt);
-
+	/*
+		prepare the { push_decl_space
+	*/
+	anode old_c = current_decl_context;
+	current_decl_context = COMPOUND_DS_OUTER((anode_expr*)cp_stmt);
 	basic_block_t *b = build_cfg(s, list, before, "compound");
+	current_decl_context = old_c;
 
-
+	/*
+		restore the outer decl_space
+	*/
 
 	printf("end build_compound_cfg %u\n", b->index);
 
@@ -246,7 +252,25 @@ void dump_bb(basic_block_t *start_bb){
 	basic_block_t *b;
 	for(b = start_bb; b; b = b->next){
 		int i = 0;
-		printf("block %u %s\n", b->index, b->comment);
+		printf("block %u %s %x\n", b->index, b->comment, b->decl_context);
+		map<anode, anode>::iterator iter;
+		if(b->ssa_table){
+			printf("has use-def table filled %d\n", b->filled);
+			for(iter = (*b->ssa_table).begin(); iter != (*b->ssa_table).end(); ++iter){
+				if(iter->first == &undefine_variable){
+					printf("undefine_variable\n");
+					continue;
+				}
+				printf("[%s] 0x%x\n",
+					IDENTIFIER_POINTER(decl_name(iter->first)),
+					iter->first);
+			}
+		}
+		printf("phi:\n");
+		for (anode p = b->phi; p; p = p->chain){
+			printf("\tphi %x\n", p);
+		}
+
 		for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
 			i++;
 			printf("\tstmt >> %s\n", anode_code_name(anode_code(ANODE_VALUE(t))));
@@ -259,7 +283,104 @@ void dump_edges(basic_block_t *start_bb){
 
 }
 
-anode is_block_def_visiable(basic_block_t *from, basic_block_t *to, aode *def){
+anode _get_def(const char* name, bb b){
 
+	for (anode t = b->decl_current; t; t = ANODE_CHAIN(t)){
+		anode d = decl_name(ANODE_VALUE(t));
 
+		if(strcmp(IDENTIFIER_POINTER(d), name) == 0)
+			return ANODE_VALUE(t);
+	}
+	return &undefine_variable;
+}
+anode get_def(anode id, bb b){
+	return _get_def(IDENTIFIER_POINTER(id), b);
+}
+anode new_phi(basic_block_t *b){
+	anode_phi *p = new anode_phi(b);
+	return p;
+}
+anode write_variable(anode name, anode value, basic_block_t *b){
+	(*b->ssa_table)[name] = value;
+}
+/* make sure that id is anode_decl not anode_identifier */
+anode read_variable(anode id, basic_block_t *b);
+anode add_phi_operands(anode, anode);
+anode read_var_recursive(anode id, basic_block_t *b){
+	anode val;
+	int i = 0;
+	for(edge e = b->pred; e; e = e->pred_next){
+		i++;
+	}
+	if(i == 1)
+		val = read_variable(id, b->pred->src);
+	else{
+		exit(1);
+		val = new_phi(b);
+		write_variable(id, val, b);
+		val = add_phi_operands(id, val);
+	}
+	write_variable(id, val, b);
+	return val;
+}
+anode read_variable(anode id, basic_block_t *b){
+	assert(anode_code_class(anode_code(id)) == 'd');
+	if ((*b->ssa_table)[id])
+		return (*b->ssa_table)[id];
+	return read_var_recursive(id, b);
+}
+anode simplify_phi(anode_phi *phi){
+	assert(anode_code(phi) == IR_PHI);
+	return phi;
+}
+anode add_phi_operands(anode id, anode phi_node){
+	printf("trigger phi\n");
+	anode_phi *phi = (anode_phi*)phi_node ;
+	basic_block_t *b = ANODE_CHECK(phi, IR_PHI)->block;
+	for(edge e = b->pred; e; e = e->pred_next){
+		basic_block_t *b = e->src;
+		phi->append_operand(read_variable(id, b));
+	}
+	return simplify_phi(phi);
+}
+void rewrite_operand(anode expr, basic_block_t*b){
+	int length = anode_code_length(anode_code(expr));
+	for(int i = 0; i < length; i++){
+		anode op = ANODE_OPERAND(expr, i);
+		if(anode_code(op) == IDENTIFIER_NODE){
+			ANODE_OPERAND(expr, i) = read_variable(get_def(op, b), b);
+		}else if(anode_code_class(anode_code(op)) == 'c'){
+			continue;
+		}else if(anode_code_class(anode_code(op)) == 'e'){
+			rewrite_operand(op, b);
+		}
+	}
+
+}
+void fill_bb(basic_block_t *b){
+	b->decl_current = b->decl_context;
+	if(b->filled)
+		return;
+	for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
+		anode stmt = ANODE_VALUE(t);
+		if(anode_code_class(anode_code(stmt)) == 'd'){
+			anode_decl *d = ANODE_(ANODE_CLASS_CHECK(stmt, 'd'), anode_decl);
+		        b->decl_current = anode_cons(NULL, d, b->decl_current);
+		}else if(anode_code_class(anode_code(stmt)) == 'e'){
+			switch(anode_code(stmt)){
+				case MODIFY_EXPR:
+					rewrite_operand(ANODE_OPERAND(stmt, 1), b);
+					anode id = get_def(ANODE_OPERAND(stmt, 0), b);
+					write_variable(id, ANODE_OPERAND(stmt, 1), b);
+					break;
+			}
+		}
+
+	}
+	b->filled = 1;
+}
+void build_ssa(basic_block_t *b){
+	for(basic_block_t *t = b; t; t = t->next){
+		fill_bb(t);
+	}
 }

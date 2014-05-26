@@ -25,6 +25,7 @@ int main(){
 	printf("after all\n");
 	dump_block_list(top_ast_node, 0);
 	basic_block_t *t = build_cfg(top_ast_node, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
+	build_ssa(ENTRY_BLOCK_PTR);
 	dump_bb(ENTRY_BLOCK_PTR);
 
 }

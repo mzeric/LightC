@@ -6,7 +6,7 @@ int func(void){
 	int d;
 	if(d > 2){
 		int f1;
-		if(1){}
+		if(1){f1 = 3;d=1;}
 		d = 3;
 	}else{
 
