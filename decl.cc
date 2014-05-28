@@ -81,7 +81,9 @@ anode decl_declar(anode node){
 }
 anode get_inner_declar(anode node){
         anode name, t;
-        assert(anode_code_class(anode_code(node)) == 'd');
+        char c = anode_code_class(anode_code(node));
+        
+        assert(c == 'd');
         t = node;
         while(anode_code(t) != VAR_DECL){
             t = decl_declar(t);
@@ -89,7 +91,8 @@ anode get_inner_declar(anode node){
         return t;
 }
 anode decl_name(anode node){
-
+        if(anode_code(node) == IDENTIFIER_NODE)
+                return node;
         anode_decl *t = ANODE_(get_inner_declar(node), anode_decl);
         return ANODE_CLASS_CHECK(t, 'd')->name;
 }

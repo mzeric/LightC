@@ -12,7 +12,7 @@
    's' for codes for "statement" expressions, which have side-effects,
        but usually no interesting value.
    'e' for codes for other kinds of expressions.  
-   'g' for codes for gimple ins
+   'g' for codes for ir ins
 */  
 
 DEFTREECODE (IDENTIFIER_NODE, "identifier_node", 'x', 0)
@@ -317,4 +317,6 @@ DEFTREECODE (CASE_LABEL, "case_label", 'e', 3)
 DEFTREECODE (STMT_EXPR, "stmt_expr", 'e', 1)
 DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
 
-DEFTREECODE (IR_PHI, "ir_phi", 'g', 0)
+DEFTREECODE (IR_PHI, "ir_phi", 'e', 0)
+DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 3)
+DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)

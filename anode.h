@@ -6,6 +6,7 @@
 #include <string.h>
 #include <stdarg.h>
 #include <string>
+#include <vector>
 #include <map>
 
 #define DEFTREECODE(sym, name, type, len) sym,
@@ -366,6 +367,7 @@ inline anode decl_initial(anode node){
 
 anode build_list(anode root, anode node);
 anode chain_cat(anode a, anode b);
+anode chain_last(anode a);
 anode build_var_decl(anode specifier, anode declarator);
 anode anode_cons(anode purpose, anode node, anode chain);
 void c_parse_init(void);
@@ -383,8 +385,11 @@ int     is_branch(anode t);
     about Basic Block Construction
 */
 struct edge_s;
-enum bb_flags{
+enum edge_flag{
     EDGE_PASSTHOUGH,
+    EDGE_NO_MERGE,
+    EDGE_TRUE,
+    EDGE_FALSE,
 };
 typedef struct basic_block_s{
         unsigned                index; /* used for goto expr */
@@ -416,17 +421,26 @@ public:
             targets = NULL;
             this->chain = b->phi;
             b->phi = (anode)this;
-
+            users = NULL;
             code = IR_PHI;
 
+
         }
-        void append_operand(anode n){
-            n->chain = targets;
-            targets = n;
+        void append_operand(anode n){/* append to order by pred-edge; must be list 4 same value issue */
+            anode l = build_list(NULL, n);
+            targets = chain_cat(targets, l);
+            l->chain = NULL;
+        }
+        void replace_by(anode new_v){
+
+        }
+        void add_user(anode u){
+            
         }
 public:
         basic_block_t *block;
         anode targets;
+        anode users;/* list */
 };
 
 extern struct basic_block_s entry_exit_blocks[2];
@@ -449,13 +463,28 @@ anode build_func_decl(anode declar, anode params);
 anode build_decl(anode speci, anode declar);
 anode build_parm_decl(anode a, anode b);
 
-#define anode_cat chain_cat
+
 
 basic_block_t *build_cfg(anode s, basic_block_t*b, basic_block_t *e, const char*c);
+void simplify_bb(basic_block_t *b);
 void dump_bb(basic_block_t* t);
 void dump_stmt(anode s);
 void dump_edges(basic_block_t *e);
 void fill_bb(basic_block_t *b);
 void build_ssa(basic_block_t *b);
+inline basic_block_t* last_bb(basic_block_t *b){
+    basic_block_t* t = b;
+    while(t->next)
+        t = t->next;
+    return t;
+
+}
+inline bb get_bb(bb b, int index){
+    for(bb t = b; t; t = t->next){
+        if (t->index == index)
+            return t;
+    }
+    return NULL;
+}
 
 #endif
