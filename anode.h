@@ -7,6 +7,7 @@
 #include <stdarg.h>
 #include <string>
 #include <vector>
+#include <set>
 #include <map>
 
 #define DEFTREECODE(sym, name, type, len) sym,
@@ -66,6 +67,14 @@ void anode_operand_check_failed (int idx, int  code, const char *file,
             anode_operand_check_failed (__i, anode_code(__t),           \
                 __FILE__, __LINE__, __FUNCTION__);                      \
         &__t->operands[__i];}))
+
+#define ANODE_OPERAND_P_CHECK(T, I) __extension__                         \
+({ anode_expr *__t = (anode_expr*)(T);                                             \
+        const int __i = (I);                                            \
+        if (__i < 0 || __i >= anode_code_length(anode_code(T)))         \
+            anode_operand_check_failed (__i, anode_code(__t),           \
+                __FILE__, __LINE__, __FUNCTION__);                      \
+        &__t->operands[__i];})
 
 #define ANODE_OPERAND_CHECK_CODE(T, CODE, I) __extension__              \
 (*({ __typeof(T) __t = (T);                                             \
@@ -347,7 +356,8 @@ public:
 
 #define IDENTIFIER_POINTER(Node) ANODE_CHECK(ANODE_(Node, anode_identifier), IDENTIFIER_NODE)->pointer
 
-#define ANODE_OPERAND(NODE, I)  ANODE_OPERAND_CHECK(NODE, I)
+#define ANODE_OPERAND(NODE, I)      ANODE_OPERAND_CHECK(NODE, I)
+#define ANODE_OPERAND_P(NODE, I)    ANODE_OPERAND_P_CHECK(NODE, I)
 #define IF_STMT_CHECK(NODE)     ANODE_CHECK(NODE, IF_STMT)
 #define IF_COND(NODE)           ANODE_OPERAND (IF_STMT_CHECK (NODE), 0)
 #define THEN_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 1)
@@ -402,7 +412,7 @@ typedef struct basic_block_s{
         anode                   decl_current;
         char                    *comment;
         std::map<anode, anode>  *ssa_table;
-        int                     filled;
+        int                     status;
 
         anode                   phi;   /* all phi instructs linked by ->chain */
 
@@ -421,9 +431,8 @@ public:
             targets = NULL;
             this->chain = b->phi;
             b->phi = (anode)this;
-            users = NULL;
+            users = new std::set<anode*>;
             code = IR_PHI;
-
 
         }
         void append_operand(anode n){/* append to order by pred-edge; must be list 4 same value issue */
@@ -434,15 +443,20 @@ public:
         void replace_by(anode new_v){
 
         }
-        void add_user(anode u){
+        void add_user(anode* u){
+            users->insert(u);
             
         }
 public:
-        basic_block_t *block;
-        anode targets;
-        anode users;/* list */
+        basic_block_t   *block;
+        anode           targets;
+        std::set<anode*> *users;/* list */
 };
-
+inline void add_phi_user(anode phi, anode* u){
+        if(anode_code(phi) != IR_PHI)
+            return;
+        ((anode_phi*)phi)->add_user(u);
+}
 extern struct basic_block_s entry_exit_blocks[2];
 
 #define ENTRY_BLOCK_PTR (&entry_exit_blocks[0])

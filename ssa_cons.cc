@@ -19,7 +19,9 @@ anode current_decl_context = NULL;
 anode_node undefine_variable;
 anode_node uninitial_variable;
 
-map<string, pair<anode, anode> > t;
+typedef map<anode, anode> ssa_table_t;
+typedef map<basic_block_t*, map<anode, anode> > use_def_t;
+use_def_t unsealed_block;
 
 enum fill_ttype{
 	BB_UNFILLED = 0,
@@ -132,7 +134,7 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	b->decl_context = current_decl_context;
 	b->decl_current = b->decl_context;
 	b->ssa_table = NULL;
-	b->filled = 0;
+	b->status = BB_UNFILLED;
 	b->phi = NULL;
 
 
@@ -298,7 +300,7 @@ void dump_bb(basic_block_t *start_bb){
 		printf("block %u %s %x\n", b->index, b->comment, b->decl_context);
 		map<anode, anode>::iterator iter;
 		if(b->ssa_table){
-			printf("has use-def table filled %d\n", b->filled);
+			printf("has use-def table status %d\n", b->status);
 			for(iter = (*b->ssa_table).begin(); iter != (*b->ssa_table).end(); ++iter){
 				if(iter->first == &undefine_variable){
 					printf("undefine_variable\n");
@@ -412,14 +414,16 @@ anode write_variable(anode name, anode value, basic_block_t *b){
 }
 /* make sure that id is anode_decl not anode_identifier */
 anode read_variable(anode id, basic_block_t *b);
-anode add_phi_operands(anode, anode);
+anode add_phi_operands(anode, anode&);
 anode read_var_recursive(anode id, basic_block_t *b){
 	anode val;
 	int i = 0;
 	printf("read %d from recursive\n", b->index);	
-	if(!b->filled){
+	if(b->status != BB_SEALED){
 
 		//fill_bb(b);
+		anode p = new_phi(b);
+		unsealed_block[b][id] = p;
 	}
 	for(edge e = b->pred; e; e = e->pred_next){
 		i++;
@@ -442,7 +446,7 @@ anode read_variable(anode id, basic_block_t *b){
 	if(!b)
 		return NULL;
 	assert(anode_code_class(anode_code(id)) == 'd');
-	printf("read %d(%d) %x", b->index,b->filled, id);
+	printf("read %d(%d) %x", b->index,b->status, id);
 	if (b->ssa_table && (*b->ssa_table)[id]){
 		printf(" get\n");
 		return (*b->ssa_table)[id];
@@ -454,25 +458,29 @@ anode simplify_phi(anode_phi *phi){
 	assert(anode_code(phi) == IR_PHI);
 	return phi;
 }
-anode add_phi_operands(anode id, anode phi_node){
+anode add_phi_operands(anode id, anode& phi_node){
 
 	anode_phi *phi = (anode_phi*)phi_node ;
 	basic_block_t *b = ANODE_CHECK(phi, IR_PHI)->block;
 	printf("trigger phi from %d\n", b->index);
 	for(edge e = b->pred; e; e = e->pred_next){
 		basic_block_t *b = e->src;
-		if(!b->filled){
+		if(b->status == BB_UNFILLED){
 			printf("up filled %d\n", e->src->index);
 			fill_bb(e->src);
 		}
+
 		anode tt = read_variable(id, b);
-		if (anode_code(tt) == IR_PHI){
-			((anode_phi*)tt)->add_user(phi);
-		}
-		phi->append_operand(read_variable(id, b));
+		add_phi_user(tt, &phi_node);
+		phi->append_operand(tt);
 	}
 	return simplify_phi(phi);
 }
+void seal_phi(){
+
+}
+#define seal seal_phi;
+
 anode rewrite_operand(anode expr, basic_block_t*b){
 
 	int length = anode_code_length(anode_code(expr));
@@ -490,11 +498,15 @@ anode rewrite_operand(anode expr, basic_block_t*b){
 		anode op = ANODE_OPERAND(expr, i);
 		printf("rewrite, %s\n", anode_code_name(anode_code(op)));
 		if(anode_code(op) == IDENTIFIER_NODE){
-			ANODE_OPERAND(expr, i) = read_variable(get_def(op, b), b);
+			anode u = read_variable(get_def(op, b), b);
+			add_phi_user(u, ANODE_OPERAND_P(expr, i));
+			ANODE_OPERAND(expr, i) = u;
 		}else if(anode_code_class(anode_code(op)) == 'c'){
 			continue;
 		}else if(anode_code_class(anode_code(op)) == 'e'){
-			ANODE_OPERAND(expr, i) = rewrite_operand(op, b);
+			anode u = rewrite_operand(op, b);
+			add_phi_user(u, ANODE_OPERAND_P(expr, i));
+			ANODE_OPERAND(expr, i) = u;
 		}
 	}
 	return expr;
@@ -514,13 +526,13 @@ void reset_fill(basic_block_t *b){
 void fill_bb(basic_block_t *b){
 
 	b->decl_current = b->decl_context;
-	if(b->filled)
-		return;
+	if(b->status != BB_UNFILLED)
+		goto try_seal;
 	printf("fill the %d\n", b->index);
 	/* delete all non-phi entry of ssa_table */
-	/* 1. delete it */
+	/* 1. delete it
 	if (b->ssa_table)
-		reset_fill(b);
+		reset_fill(b); */
 	for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
 		anode stmt = ANODE_VALUE(t);
 		if(anode_code_class(anode_code(stmt)) == 'd'){
@@ -533,8 +545,7 @@ void fill_bb(basic_block_t *b){
 				case MODIFY_EXPR:
 					printf("get MODIFY_EXPR\n");
 					anode tt = rewrite_operand(ANODE_OPERAND(stmt, 1), b);
-					if (anode_code(tt) == IR_PHI)
-						((anode_phi*)tt)->add_user(ANODE_OPERAND(stmt, 1));
+					add_phi_user(tt, ANODE_OPERAND_P(stmt, 1));
 					ANODE_OPERAND(stmt, 1) = tt;
 					anode id = get_def(ANODE_OPERAND(stmt, 0), b);
 					write_variable(id, ANODE_OPERAND(stmt, 1), b);
@@ -543,9 +554,25 @@ void fill_bb(basic_block_t *b){
 		}
 
 	}
-	b->filled = 1;
+	b->status = BB_FILLED;
+try_seal:
 	printf("bb %d filled\n", b->index);
+
 }
+
+/**/
+
+void get_phi_use(basic_block_t *b){
+	for (basic_block_t *t = b; t; t = t->next){
+		for (ssa_table_t::iterator iter = b->ssa_table->begin();
+			iter != b->ssa_table->end(); ++iter){
+			if (anode_code(iter->second) == IR_PHI){
+
+			}
+		}
+	}
+}
+
 /* trivial when operands consist of only one non-phi value */
 anode remove_trivial_phi(anode p){
 	anode_phi *phi = (anode_phi*)p;
@@ -562,12 +589,11 @@ anode remove_trivial_phi(anode p){
 		same = &undefine_variable;
 	
 	phi->replace_by(same);
-
-	for (anode u = phi->users; u; ANODE_CHAIN(u)){
-		if (ANODE_VALUE(u) == phi)
+	for (set<anode*>::iterator iter = phi->users->begin(); iter != phi->users->end(); ++iter){
+		if (**iter == phi)
 			continue;
-		if (anode_code(ANODE_VALUE(u)) == IR_PHI)
-			remove_trivial_phi(ANODE_VALUE(u));
+		if (anode_code(**iter) == IR_PHI)
+			remove_trivial_phi(**iter);
 	}
 
 }
