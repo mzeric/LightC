@@ -130,6 +130,7 @@ public:
     }
 	virtual ~anode_node(){
 	}
+    virtual void add_user(anode *u){}
 };
 
 typedef struct location_s{
@@ -441,7 +442,10 @@ public:
             l->chain = NULL;
         }
         void replace_by(anode new_v){
-
+            std::set<anode*>::iterator iter;
+            for (iter = users->begin(); iter != users->end(); ++iter){
+                    **iter = new_v;
+            }
         }
         void add_user(anode* u){
             users->insert(u);

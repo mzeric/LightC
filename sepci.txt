@@ -1,4 +1,0 @@
-支持语法
-	
-	支持类型：int
-	支持声明，int fool = 1; 不支持int foo, fool;
