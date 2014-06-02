@@ -137,11 +137,16 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	b->ssa_table = NULL;
 	b->status = BB_UNFILLED;
 	b->phi = NULL;
+	b->live = new live_ness_t();
 
 
 	return b;
 }
-
+anode new_ssa_name(anode id){
+	anode ssa = new anode_ssa_name(id);
+	ssa->version = id->version++;
+	return ssa;
+}
 basic_block_t *bb_fork_after(anode *first, anode *after, basic_block_t *prev_bb){
 	//bb_split_after(first, after);
 	return new_basic_block(*first, prev_bb, NULL);
@@ -319,9 +324,16 @@ void dump_bb(basic_block_t *start_bb){
 		}
 		printf("phi:\n");
 		for (anode p = b->phi; p; p = p->chain){
+			anode_phi *phi = (anode_phi*)p;
 			printf("\tphi %x :\t", p);
 			for (anode t = ((anode_phi*)p)->targets; t; t = t->chain){
 				printf(" %x", ANODE_VALUE(t));
+			}
+			printf("\n");
+			printf("\tusers: ");
+			for (std::set<anode*>::iterator iter = p->users->begin(); 
+				iter != p->users->end(); ++iter){
+				printf(" %x->%x ", *iter, **iter);
 			}
 			printf("\n");
 		}

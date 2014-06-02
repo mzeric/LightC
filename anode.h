@@ -10,6 +10,8 @@
 #include <set>
 #include <map>
 
+
+
 #define DEFTREECODE(sym, name, type, len) sym,
 enum anode_code{
 	#include "c-tree.def"
@@ -120,6 +122,8 @@ public:
         unsigned lang_flag_5 : 1;
         unsigned lang_flag_6 : 1;
         unsigned unused_2 : 1;
+
+        unsigned int version;
 public:
 	virtual int length(){
 		return anode_code_length(this->code);
@@ -127,10 +131,14 @@ public:
     anode_node(){
         chain = NULL;
         type  = NULL;
+        version = 0;
+        users = new std::set<anode*>;
     }
 	virtual ~anode_node(){
 	}
     virtual void add_user(anode *u){}
+
+    std::set<anode*> *users;/* list */
 };
 
 typedef struct location_s{
@@ -349,6 +357,7 @@ public:
 #define ANODE_CHAIN(t)       ((t)->chain)
 #define ANODE_LIST_CHECK
 #define ANODE_VALUE(Node)       ANODE_(ANODE_CHECK((Node), ANODE_LIST),anode_list)->value
+#define ANODE_PURPOSE(Node)       ANODE_(ANODE_CHECK((Node), ANODE_LIST),anode_list)->purpose
 /* Every node has one type */
 #define ANODE_TYPE(Node)        ((Node)->type)
 #define TYPE_SIZE(t)           ANODE_(ANODE_CLASS_CHECK((t), 't'), anode_type)->size
@@ -402,6 +411,7 @@ enum edge_flag{
     EDGE_TRUE,
     EDGE_FALSE,
 };
+#include "dfa.h"
 typedef struct basic_block_s{
         unsigned                index; /* used for goto expr */
         struct basic_block_s    *prev, *next; /* the chain */
@@ -416,6 +426,7 @@ typedef struct basic_block_s{
         int                     status;
 
         anode                   phi;   /* all phi instructs linked by ->chain */
+        struct live_ness_t      *live;
 
 }basic_block_t, *bb;
 
@@ -426,13 +437,24 @@ typedef struct edge_s{
         int                     flag;
 
 }edge_t, *edge;
+class anode_ssa_name : public anode_node {
+public:
+        anode_ssa_name(){
+            code = IR_SSA_NAME;
+        }
+        anode_ssa_name(anode id){
+            var = id;
+        }
+        anode var; /* NULL means phi node */
+        anode def_stmt;
+        std::set<anode> ulist;
+};
 class anode_phi : public anode_node {
 public:
         anode_phi(basic_block_t *b):block(b){
             targets = NULL;
             this->chain = b->phi;
             b->phi = (anode)this;
-            users = new std::set<anode*>;
             code = IR_PHI;
 
         }
@@ -454,7 +476,7 @@ public:
 public:
         basic_block_t   *block;
         anode           targets;
-        std::set<anode*> *users;/* list */
+
 };
 inline void add_phi_user(anode phi, anode* u){
         if(anode_code(phi) != IR_PHI)
@@ -504,5 +526,8 @@ inline bb get_bb(bb b, int index){
     }
     return NULL;
 }
+
+extern anode get_def(anode id, bb b);
+extern anode read_variable(anode id, bb b);
 
 #endif
