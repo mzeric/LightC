@@ -362,12 +362,18 @@ class anode_ssa_name : public anode_node {
 public:
         anode_ssa_name(){code = IR_SSA_NAME;}
         anode_ssa_name(anode id){
-            var = id;
-            code = IR_SSA_NAME;
+            var     = id;
+            code    = IR_SSA_NAME;
+            phi     = NULL;;
         }
+        void set_phi(anode p){
+            phi = p;
+        }
+        bool is_phi(){return phi;}
         anode var; /* NULL means phi node */
         anode def_stmt;
         std::set<anode> ulist;
+        anode phi;
 };
 struct ssa_name_comparator{
     bool operator()(const anode &l, const anode &r)const{

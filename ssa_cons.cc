@@ -292,10 +292,19 @@ void inline print_var(anode v){
 
 }
 void inline print_ssa_var(anode_ssa_name *ssa) {
-	if (ssa->code == IR_SSA_NAME)
+
+	if (!ssa)return;
+	if (ssa == &undefine_variable || ssa->var == &undefine_variable){
+		printf("ssa_undef\n");
+		return;
+	}
+
+	if (ssa->is_phi()){
+		printf ("%s.%d_phi %x",IDENTIFIER_POINTER(decl_name(ssa->var)),	ssa->version, ssa);
+	}else{	
 		printf ("%s.%d %x",IDENTIFIER_POINTER(decl_name(ssa->var)), ssa->version, ssa);
-	else 
-		printf ("phi. %x", ssa->version, ssa);
+	}
+
 }
 void dump_bb(basic_block_t *start_bb){
 	basic_block_t *b;
@@ -371,6 +380,7 @@ void dump_bb(basic_block_t *start_bb){
 			assert(anode_code(*iter) == IR_SSA_NAME || anode_code(*iter) == IR_PHI||
 				*iter == &undefine_variable);
 			printf("\t");
+
 			print_ssa_var((anode_ssa_name*)*iter);
 		}
 		printf("\n");
@@ -489,7 +499,9 @@ anode read_var_recursive(anode id, basic_block_t *b){
 		/* not all filled */
 		val = new_phi(b);
 		unsealed_block[b][id] = val;
-		return val;
+		anode_ssa_name *s_name = write_variable(id, val, b);
+		s_name->set_phi(val);
+		return s_name;
 	}
 	for(edge e = b->pred; e; e = e->pred_next){
 		i++;
@@ -505,9 +517,10 @@ anode read_var_recursive(anode id, basic_block_t *b){
 
 		val = new_phi(b);
 		anode_ssa_name *s_name = write_variable(id, val, b);
+		s_name->set_phi(val);
 		val = add_phi_operands(id, val);
 		(*b->ssa_table)[s_name] = val;
-		return val;
+		return s_name;
 
 	}
 	if(val)
