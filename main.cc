@@ -5,10 +5,11 @@
 #include "lexer.h"
 #include "anode.h"
 #include "parse.hh"
-
+#include "dfa.h"
 extern int yydebug;
 extern char *yytext;
 extern int yyleng;
+
 int main(){
 	int i;	
 	/*
@@ -18,6 +19,9 @@ int main(){
 
 	}
 	*/
+
+
+
 	yydebug = 0;
         c_parse_init();
 	yyparse();
@@ -28,6 +32,7 @@ int main(){
 	simplify_bb(ENTRY_BLOCK_PTR->next);
 	//make_edge(get_bb(ENTRY_BLOCK_PTR, 8), get_bb(ENTRY_BLOCK_PTR, 6), 0);
 	build_ssa(ENTRY_BLOCK_PTR);
-	dump_bb(ENTRY_BLOCK_PTR);
+	dfa_handle(ENTRY_BLOCK_PTR);
 
+	dump_bb(ENTRY_BLOCK_PTR);
 }

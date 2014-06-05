@@ -321,3 +321,5 @@ DEFTREECODE (IR_PHI, "ir_phi", 'e', 0)
 DEFTREECODE (IR_SSA_NAME, "ir_ssa_name", 'x', 0)
 DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 3)
 DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)
+DEFTREECODE (IR_NONE, "ir_none", 'n', 0)
+

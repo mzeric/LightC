@@ -30,6 +30,7 @@ extern "C" void yyerror(char const *s)
 	printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
 }
 extern "C" void check(const char *msg, ...){
+	return;
 	va_list vp;
 	char *buf = NULL;
 	va_start(vp, msg);
@@ -914,10 +915,15 @@ expression_statement
 selection_statement
 	: IF  '(' expression ')' statement{
 		check("if then");
+		anode_expr *p = (anode_expr*)$3;
+		COMPOUND_DS_OUTER(p) = current_declspaces;
 		$$ = build_stmt(IF_STMT, $3, $5, NULL);
 	}
 	| IF  '(' expression ')' statement ELSE statement{
 		check("if then else");
+		anode_expr *p = (anode_expr*)$3;
+		COMPOUND_DS_OUTER(p) = current_declspaces;
+
 		$$ = build_stmt(IF_STMT, $3, $5, $7);
 
 	}

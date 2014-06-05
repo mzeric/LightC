@@ -89,6 +89,7 @@ void anode_operand_check_failed (int idx, int  code, const char *file,
     &__t->operands[__i];}))
 
 struct basic_block_s;
+
 class anode_node{
 public:
         anode           chain;
@@ -124,6 +125,7 @@ public:
         unsigned unused_2 : 1;
 
         unsigned int version;
+        anode        decl_outer;
 public:
 	virtual int length(){
 		return anode_code_length(this->code);
@@ -137,6 +139,12 @@ public:
 	virtual ~anode_node(){
 	}
     virtual void add_user(anode *u){}
+    virtual void cat(anode p){
+        if (this->chain)
+            this->chain->cat(p);
+        else
+            this->chain = p;
+    }
 
     std::set<anode*> *users;/* list */
 };
@@ -244,7 +252,7 @@ public:
 public:
         unsigned uid;
         anode name;
-        anode context;
+
 
         anode           size;
         unsigned char mode : 8;
@@ -350,7 +358,31 @@ public:
         anode fragment_origin;
         anode fragment_chain;
 };
+class anode_ssa_name : public anode_node {
+public:
+        anode_ssa_name(){code = IR_SSA_NAME;}
+        anode_ssa_name(anode id){
+            var = id;
+            code = IR_SSA_NAME;
+        }
+        anode var; /* NULL means phi node */
+        anode def_stmt;
+        std::set<anode> ulist;
+};
+struct ssa_name_comparator{
+    bool operator()(const anode &l, const anode &r)const{
+        anode_ssa_name *a = (anode_ssa_name*)l;
+        anode_ssa_name *b = (anode_ssa_name*)r;
 
+        if (a->var == b->var){
+            if (a->version == b->version)
+                return false;
+            return a->version < b->version;
+        }else
+            return a->var < b->var;
+    }
+};
+typedef std::map<anode_ssa_name*, anode, ssa_name_comparator> ssa_table_t;
 
 #define ANODE_(Node, Type) __extension__                \
 ({  ((Type*)(Node)); })
@@ -411,7 +443,7 @@ enum edge_flag{
     EDGE_TRUE,
     EDGE_FALSE,
 };
-#include "dfa.h"
+//#include "dfa.h"
 typedef struct basic_block_s{
         unsigned                index; /* used for goto expr */
         struct basic_block_s    *prev, *next; /* the chain */
@@ -422,7 +454,7 @@ typedef struct basic_block_s{
         anode                   decl_context; /* store the current_declspaces */
         anode                   decl_current;
         char                    *comment;
-        std::map<anode, anode>  *ssa_table;
+        ssa_table_t             *ssa_table;
         int                     status;
 
         anode                   phi;   /* all phi instructs linked by ->chain */
@@ -437,18 +469,7 @@ typedef struct edge_s{
         int                     flag;
 
 }edge_t, *edge;
-class anode_ssa_name : public anode_node {
-public:
-        anode_ssa_name(){
-            code = IR_SSA_NAME;
-        }
-        anode_ssa_name(anode id){
-            var = id;
-        }
-        anode var; /* NULL means phi node */
-        anode def_stmt;
-        std::set<anode> ulist;
-};
+
 class anode_phi : public anode_node {
 public:
         anode_phi(basic_block_t *b):block(b){

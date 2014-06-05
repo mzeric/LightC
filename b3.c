@@ -20,5 +20,5 @@ int func(void){
 }
 int tail(int t){
 	//return 3;
-	t = 4;
+	t = c;
 }

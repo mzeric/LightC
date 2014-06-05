@@ -3,7 +3,7 @@
 #include <string>
 #include <map>
 #include <iostream>
-
+#include "dfa.h"
 #include "anode.h"
 
 using namespace std;
@@ -19,7 +19,9 @@ anode current_decl_context = NULL;
 anode_node undefine_variable;
 anode_node uninitial_variable;
 
-typedef map<anode, anode> ssa_table_t;
+anode_ssa_name ssa_undef_variable;
+anode_ssa_name ssa_unini_variable;
+
 typedef map<anode, anode> ssa_unsealed_var_t;
 typedef map<basic_block_t*, ssa_unsealed_var_t > ssa_unsealed_t;
 ssa_unsealed_t unsealed_block;
@@ -30,15 +32,7 @@ enum fill_ttype{
 	BB_SEALED = 2,
 };
 
-void  ssa_write(anode id, anode value){
-      push_ssa_decl(id, value);
-}
-anode ssa_read(const char *name){
-      anode t = lookup_name_current_bb(name);
-      if(t)
-      	    return t;
 
-}
 anode function_body(anode f){
 		return NULL;
 }
@@ -97,16 +91,12 @@ edge make_edge(bb src, bb dst, int flag){
 }
 edge redirect_edge(edge re, bb new_dst){
 	//for (edge e = re; e; e = e->)
+	return NULL;
 }
 void free_edge(edge e){
         free(e);
 }
-void remove_edge(edge e){
 
-}
-void dump_edge_info(edge e){
-
-}
 void bb_add_stmt(basic_block_t *b, anode s){
 	anode last = build_list(NULL, s);
 
@@ -134,7 +124,7 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	b->index = global_bb_index++;
 	b->decl_context = current_decl_context;
 	b->decl_current = b->decl_context;
-	b->ssa_table = NULL;
+	b->ssa_table = new ssa_table_t();
 	b->status = BB_UNFILLED;
 	b->phi = NULL;
 	b->live = new live_ness_t();
@@ -142,11 +132,7 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 
 	return b;
 }
-anode new_ssa_name(anode id){
-	anode ssa = new anode_ssa_name(id);
-	ssa->version = id->version++;
-	return ssa;
-}
+
 basic_block_t *bb_fork_after(anode *first, anode *after, basic_block_t *prev_bb){
 	//bb_split_after(first, after);
 	return new_basic_block(*first, prev_bb, NULL);
@@ -169,10 +155,12 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	anode then_stmt = THEN_CLAUSE(if_stmt);
 	anode else_stmt = ELSE_CLAUSE(if_stmt);
 	anode ir_br = build_stmt(IR_BRANCH, if_cond, NULL, NULL);
-	anode ir_br_list = build_list(NULL, ir_br);
-	if_bb = build_cfg(ir_br, list, before, "if_cond");
+	anode old_c = COMPOUND_DS_OUTER((anode_expr*)if_cond);
 
-//	bb_insert_last(if_bb, ir_br);
+	current_decl_context = old_c;
+	if_bb = build_cfg(ir_br, list, before, "if_cond");
+	current_decl_context = old_c;
+
 	//FIXME shall we need the then_entry empty-bb
 	then_bb = build_cfg(then_stmt, if_bb, if_bb, "then ");
 	if_bb->succ->flag = EDGE_TRUE;
@@ -274,17 +262,11 @@ basic_block_t *build_cfg(anode start_stmt, basic_block_t *list, basic_block_t *b
 
 	return b;	
 }
-void build_edges(basic_block_t *start_bb){
 
-}
-basic_block_t *start_func_bb(anode body){
-	basic_block_t *start = build_cfg(body, NULL, NULL, NULL);
-	build_edges(start);
-}
 void dump_bb_var(basic_block_t *b){
 	printf("dump: %d ssa_table = %x\n", b->index, b->ssa_table);
 	if(b->ssa_table){
-		map<anode, anode>::iterator iter;
+		ssa_table_t::iterator iter;
 		for (iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
 			if(iter->first == &undefine_variable){
 				printf("undefine_variable\n");
@@ -299,27 +281,47 @@ void dump_bb_var(basic_block_t *b){
 
 	//for ()
 }
+void inline print_var(anode v){
+	if (v == &undefine_variable)
+		printf(" undef");
+	else if (v == &uninitial_variable)
+		printf(" uninit");
+	else
+		printf(" %x(%s)", v,
+			anode_code_name(anode_code(v)));
+
+}
+void inline print_ssa_var(anode_ssa_name *ssa) {
+	if (ssa->code == IR_SSA_NAME)
+		printf ("%s.%d %x",IDENTIFIER_POINTER(decl_name(ssa->var)), ssa->version, ssa);
+	else 
+		printf ("phi. %x", ssa->version, ssa);
+}
 void dump_bb(basic_block_t *start_bb){
 	basic_block_t *b;
 	for(b = start_bb; b; b = b->next){
 		int i = 0;
 		printf("block %u %s %x\n", b->index, b->comment, b->decl_context);
-		map<anode, anode>::iterator iter;
+		ssa_table_t::iterator iter;
+		printf("decl_space 0x%x : 0x%x\n", b->decl_context, b->decl_current);
 		if(b->ssa_table){
 			printf("has use-def table status %d\n", b->status);
-			for(iter = (*b->ssa_table).begin(); iter != (*b->ssa_table).end(); ++iter){
-				if(iter->first == &undefine_variable){
+			for(iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
+				if(iter->first->var == &undefine_variable){
 					printf("undefine_variable\n");
 					continue;
 				}
-				if (iter->first == &uninitial_variable){
+				if (iter->first->var == &uninitial_variable){
 					printf("uninitial_variable\n");
 					continue;
 				}
-				printf("[%s](%x) 0x%x\n",
-					IDENTIFIER_POINTER(decl_name(iter->first)),
+				printf("[%s](%x->%x:%d) ",
+					IDENTIFIER_POINTER(decl_name(iter->first->var)),
 					iter->first,
-					iter->second);
+					iter->first->var,iter->first->version);
+				print_var(iter->second);
+				printf("\n");
+				
 			}
 		}
 		printf("phi:\n");
@@ -327,7 +329,8 @@ void dump_bb(basic_block_t *start_bb){
 			anode_phi *phi = (anode_phi*)p;
 			printf("\tphi %x :\t", p);
 			for (anode t = ((anode_phi*)p)->targets; t; t = t->chain){
-				printf(" %x", ANODE_VALUE(t));
+//				printf(" %x", ANODE_VALUE(t));
+				print_var(ANODE_VALUE(t));
 			}
 			printf("\n");
 			printf("\tusers: ");
@@ -348,6 +351,30 @@ void dump_bb(basic_block_t *start_bb){
 			printf(" %d(%d)", e->dst->index, e->flag);
 		}
 		printf("\n");
+		/* dump the use_def info */
+		printf("use:\n");
+		if (!b->live){
+			printf("no use\n");
+			goto no_live;
+		}
+		for (live_set_t::iterator iter = b->live->use.begin();
+			iter != b->live->use.end(); ++iter){
+			assert(anode_code(*iter) == IR_SSA_NAME || anode_code(*iter) == IR_PHI);
+			printf("\t");
+			print_ssa_var((anode_ssa_name*)*iter);
+		}
+		printf("\n");
+		printf("def:\n");
+		for (live_set_t::iterator iter = b->live->def.begin();
+			iter != b->live->def.end(); ++iter){
+
+			assert(anode_code(*iter) == IR_SSA_NAME || anode_code(*iter) == IR_PHI||
+				*iter == &undefine_variable);
+			printf("\t");
+			print_ssa_var((anode_ssa_name*)*iter);
+		}
+		printf("\n");
+no_live:
 		for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
 			i++;
 			printf("\tstmt >> %s\n", anode_code_name(anode_code(ANODE_VALUE(t))));
@@ -415,14 +442,23 @@ anode new_phi(basic_block_t *b){
 	anode_phi *p = new anode_phi(b);
 	return p;
 }
-anode write_variable(anode name, anode value, basic_block_t *b){
-	printf("write ssa table bb:%d, 0x%s, 0x%x\n",
+anode_ssa_name* new_ssa_name(anode id){
+	//printf("new ssa name %s, %x, %x\n", anode_code_name(anode_code(id)), id, &undefine_variable);
+	//assert(anode_code_class(anode_code(id)) == 'd');
+	anode_ssa_name *ssa = new anode_ssa_name(id);
+	ssa->version = id->version++;
+	return ssa;
+}
+anode_ssa_name* write_variable(anode name, anode value, basic_block_t *b){
+	printf("write ssa table bb:%d, %s, 0x%x, %s\n",
 		b->index, 
 		IDENTIFIER_POINTER(decl_name(name)),
-		value);
+		value, anode_code_name(anode_code(value)));
 	if(b->ssa_table == NULL)
-		b->ssa_table = new map<anode, anode>();
-	(*b->ssa_table)[name] = value;
+		b->ssa_table = new ssa_table_t();
+	anode_ssa_name *ssa_name = new_ssa_name(name);
+	(*b->ssa_table)[ssa_name] = value;
+	return ssa_name;
 }
 /* make sure that id is anode_decl not anode_identifier */
 anode read_variable(anode id, basic_block_t *b);
@@ -432,6 +468,18 @@ bool is_pred_ok(basic_block_t *b, int flag){
 		if (!(e->src->status & flag))
 			return false;
 	return true;
+}
+anode get_ssa_name(anode id, int version, basic_block_t *b){
+	for (ssa_table_t::iterator iter = b->ssa_table->begin();
+		iter != b->ssa_table->end(); ++iter){
+		if (iter->first->var == id && iter->first->version == version)
+			return iter->first;
+	}
+	return NULL;
+}
+void reset_ssa_value(anode id, anode value, basic_block_t *b){
+	anode_ssa_name *name ;
+
 }
 anode read_var_recursive(anode id, basic_block_t *b){
 	anode val;
@@ -448,28 +496,64 @@ anode read_var_recursive(anode id, basic_block_t *b){
 	}
 	if(i == 0)/* dumm entry_block_ptr */
 		return &undefine_variable;
-	if(i == 1)
+	if(i == 1){
 		val = read_variable(id, b->pred->src);
+		printf("read get %s\n", anode_code_name(anode_code(val)));
+		return val;
+	}
 	else{
 
 		val = new_phi(b);
-		write_variable(id, val, b);
+		anode_ssa_name *s_name = write_variable(id, val, b);
 		val = add_phi_operands(id, val);
+		(*b->ssa_table)[s_name] = val;
+		return val;
 
 	}
 	if(val)
 		write_variable(id, val, b);
-	assert(val);
+	assert(anode_code(val) == IR_SSA_NAME);
 	return val;
 }
+anode_ssa_name *get_latest_variable(anode id, basic_block_t *b){
+	ssa_table_t::iterator iter;
+	int ver = 0;
+	anode_ssa_name *p = NULL;
+
+	for (iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
+		if (iter->first->var == id)
+			if (iter->first->version >= ver){
+				ver = iter->first->version;
+				p = iter->first;
+			}
+			
+		
+	}
+	return p;
+
+}
 anode read_variable(anode id, basic_block_t *b){
+
+	printf("read %s(%s:%x) in %d\n", anode_code_name(anode_code(id)),
+		IDENTIFIER_POINTER(decl_name(id)), id, b->index);
 	if(!b)
 		return NULL;
-	assert(anode_code_class(anode_code(id)) == 'd');
-	if (b->ssa_table && (*b->ssa_table)[id])
-		return (*b->ssa_table)[id];
+	if (id == &undefine_variable){
+		return id;
+	}
+	//assert(anode_code_class(anode_code(id)) == 'd');
+	if (b->ssa_table){
+		anode_ssa_name *t = get_latest_variable(id, b);
+		if (t){
+			printf("read latest get %s:%x,%x\n", anode_code_name(anode_code(t)), t, 
+				&uninitial_variable);
+			return t;
+		}
+	}
 
-	return read_var_recursive(id, b);
+	anode xr = read_var_recursive(id, b);
+	printf("read_variable return %s\n", anode_code_name(anode_code(xr)));
+	return xr;
 }
 
 /* trivial when operands consist of only one non-phi value */
@@ -516,42 +600,50 @@ anode add_phi_operands(anode id, anode& phi_node){
 		}
 
 		anode tt = read_variable(id, b);
-		//printf("add phi \n");
-		add_phi_user(tt, &phi_node);
+
 		phi->append_operand(tt);
 	}
 	return simplify_phi(phi);
 }
 
-anode rewrite_operand(anode expr, basic_block_t*b){
+void rewrite_operand(anode &expr, basic_block_t*b){
 
 	int length = anode_code_length(anode_code(expr));
+	int code = anode_code(expr);
+	printf("REWRITE %s %d operands @%x\n", anode_code_name(code), anode_code_length(code),
+		b->decl_current);
 
-	if(length == 0){
-		/* identifier or cst*/
-		if (anode_code_class(anode_code(expr)) == 'c')
-			return expr;
-		if (anode_code(expr) == IDENTIFIER_NODE){
-			return read_variable(get_def(expr, b), b);
-		}
+	/* identifier or cst*/
+	if (anode_code_class(anode_code(expr)) == 'c')
+		return;
+	if (anode_code(expr) == IDENTIFIER_NODE){
+		printf("\t count id_node %s\n", IDENTIFIER_POINTER(decl_name(expr)));
+		printf("\t id: %x\n", get_def(expr, b));
+		expr = read_variable(get_def(expr, b), b);
+		printf("\t  %s\n", anode_code_name(anode_code(expr)));
+		return;
 	}
+
+
 	for(int i = 0; i < length; i++){
 
-		anode op = ANODE_OPERAND(expr, i);
-		printf("rewrite, %s\n", anode_code_name(anode_code(op)));
-		if(anode_code(op) == IDENTIFIER_NODE){
-			anode u = read_variable(get_def(op, b), b);
-			add_phi_user(u, ANODE_OPERAND_P(expr, i));
-			ANODE_OPERAND(expr, i) = u;
-		}else if(anode_code_class(anode_code(op)) == 'c'){
+		anode *op = ANODE_OPERAND_P(expr, i);
+		if (!*op)
 			continue;
-		}else if(anode_code_class(anode_code(op)) == 'e'){
-			anode u = rewrite_operand(op, b);
-			add_phi_user(u, ANODE_OPERAND_P(expr, i));
-			ANODE_OPERAND(expr, i) = u;
+		rewrite_operand(*op, b);
+		/*
+		printf("rewrite, %s\n", anode_code_name(anode_code(*op)));
+		if(anode_code(*op) == IDENTIFIER_NODE){
+			*op = read_variable(get_def(*op, b), b);
+
+		}else if(anode_code_class(anode_code(*op)) == 'c'){
+			continue;
+		//}else if(anode_code_class(anode_code(op)) == 'e'){
+		}else if (EXPR_P(*op)){
+			rewrite_operand(*op, b);
 		}
+		*/
 	}
-	return expr;
 
 }
 /*
@@ -596,25 +688,32 @@ void fill_bb(basic_block_t *b){
 		        b->decl_current = anode_cons(NULL, d, b->decl_current);
 		        write_variable(get_def(decl_name(stmt), b), &uninitial_variable, b);
 		        printf("fill one decl %x\n", d);
-		}else if(anode_code_class(anode_code(stmt)) == 'e'){
-			switch(anode_code(stmt)){
-				case MODIFY_EXPR:
-					printf("get MODIFY_EXPR\n");
-					anode tt = rewrite_operand(ANODE_OPERAND(stmt, 1), b);
-					add_phi_user(tt, ANODE_OPERAND_P(stmt, 1));
-					ANODE_OPERAND(stmt, 1) = tt;
+		}else if(EXPR_P(stmt)){
+			//switch(anode_code(stmt)){
+				if (anode_code(stmt) == MODIFY_EXPR){
+					printf("get MODIFY_EXPR %s = \n", 
+						anode_code_name(anode_code(ANODE_OPERAND(stmt, 0))));
+					
+					rewrite_operand(ANODE_OPERAND(stmt, 1), b);
+
 					anode id = get_def(ANODE_OPERAND(stmt, 0), b);
 					write_variable(id, ANODE_OPERAND(stmt, 1), b);
-					break;
+					//*ANODE_OPERAND_P(stmt, 0) = read_variable(id, b);
+					rewrite_operand(ANODE_OPERAND(stmt, 0), b);
+					printf("after %s\n",
+						anode_code_name(anode_code(ANODE_OPERAND(stmt, 1))) );
+				}else
+//				default:
+					rewrite_operand(stmt, b);
 			}
-		}
+		//}
 
 	}
 	b->status |= BB_FILLED;
 
 }
 
-/**/
+
 
 void get_phi_use(basic_block_t *b){
 	for (basic_block_t *t = b; t; t = t->next){
@@ -628,10 +727,11 @@ void get_phi_use(basic_block_t *b){
 }
 
 void build_ssa(basic_block_t *b){
+
 	for(basic_block_t *t = b; t; t = t->next){
 		fill_bb(t);
 	}
 	seal_all_last(b);
-	printf("undefine_variable %x\n", &undefine_variable);
+	printf("undefine_variable %x, uninitial_variable %x\n", &undefine_variable, &uninitial_variable);
 
 }
