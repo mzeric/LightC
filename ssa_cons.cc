@@ -107,6 +107,19 @@ void bb_add_stmt(basic_block_t *b, anode s){
 /*
 	head is the first stmt of bb
 */
+void init_bb(basic_block_t*b, basic_block_t *ahead){
+	b->exit = b->entry;
+	if(ahead)
+		ahead->next = b;
+	b->prev = ahead;
+	b->index = global_bb_index++;
+	b->decl_context = current_decl_context;
+	b->decl_current = b->decl_context;
+	b->ssa_table = new ssa_table_t();
+	b->status = BB_UNFILLED;
+	b->phi = NULL;
+	b->live = new live_ness_t();
+}
 basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	printf("new_basic_block  %s after %u:%s\n", comment, ahead->index, ahead->comment);
 	bb b = (bb)malloc(sizeof(*b));
@@ -115,20 +128,11 @@ basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 		b->entry = build_list(NULL, head);
 		head->basic_block = b;
 	}
-	b->exit = b->entry;
-	if(ahead)
-		ahead->next = b;
-	b->prev = ahead;
+	
 	if(comment)
-	b->comment = strdup(comment);
-	b->index = global_bb_index++;
-	b->decl_context = current_decl_context;
-	b->decl_current = b->decl_context;
-	b->ssa_table = new ssa_table_t();
-	b->status = BB_UNFILLED;
-	b->phi = NULL;
-	b->live = new live_ness_t();
-
+		b->comment = strdup(comment);
+	
+	init_bb(b, ahead);
 
 	return b;
 }
@@ -147,7 +151,7 @@ void bb_insert_last(basic_block_t *b, anode stmt){
 	lower the if_stmt to cond as cfg
 	the return bb should be the exit_bb
 */
-
+basic_block_t *build_cfg(anode start, basic_block_t *list, basic_block_t *b,const char* c);
 basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *before){
 	bb if_bb, then_bb, else_bb, if_exit;
 
@@ -262,7 +266,15 @@ basic_block_t *build_cfg(anode start_stmt, basic_block_t *list, basic_block_t *b
 
 	return b;	
 }
-
+basic_block_t *build_func_cfg(anode top_ast) {
+	//ENTRY_BLOCK_PTR = new_basic_block(NULL, NULL, "entry");
+	ENTRY_BLOCK_PTR->comment = strdup("entry");
+	EXIT_BLOCK_PTR->comment = strdup("exit");
+	basic_block_t *b = build_cfg(top_ast, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
+	init_bb(EXIT_BLOCK_PTR, b);
+	
+	return b;
+}
 void dump_bb_var(basic_block_t *b){
 	printf("dump: %d ssa_table = %x\n", b->index, b->ssa_table);
 	if(b->ssa_table){
@@ -301,6 +313,9 @@ void inline print_ssa_var(anode_ssa_name *ssa) {
 
 	if (ssa->is_phi()){
 		printf ("%s.%d_phi %x",IDENTIFIER_POINTER(decl_name(ssa->var)),	ssa->version, ssa);
+	}else if (ssa->is_phi_var()){
+		printf ("%s.%d %d %x",IDENTIFIER_POINTER(decl_name(ssa->var)),
+			ssa->version, ssa->br_edge->src->index, ssa);
 	}else{	
 		printf ("%s.%d %x",IDENTIFIER_POINTER(decl_name(ssa->var)), ssa->version, ssa);
 	}
@@ -384,6 +399,22 @@ void dump_bb(basic_block_t *start_bb){
 			print_ssa_var((anode_ssa_name*)*iter);
 		}
 		printf("\n");
+		printf("in:\n");
+		for (live_set_t::iterator iter = b->live->in.begin();
+			iter != b->live->in.end(); ++iter){
+			printf("\t");
+			print_ssa_var((anode_ssa_name*)*iter);
+
+		}
+		printf("\n");
+		printf("out:\n");
+		for (live_set_t::iterator iter = b->live->out.begin();
+			iter != b->live->out.end(); ++iter){
+			printf("\t");
+			print_ssa_var((anode_ssa_name*)*iter);
+
+		}
+		printf("\n");
 no_live:
 		for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
 			i++;
@@ -399,6 +430,8 @@ void dump_edges(basic_block_t *start_bb){
 void elimate_empty_join(basic_block_t *b){
 	/* is the only pred for succ */
 	int i = 0;
+	if (b == ENTRY_BLOCK_PTR || b == EXIT_BLOCK_PTR)
+		return;
 	edge succ = b->succ;
 	for (edge e = b->pred; e; e = e->pred_next)
 		if (e->flag == EDGE_NO_MERGE)
@@ -431,7 +464,8 @@ void simplify_bb(basic_block_t *b){
 			elimate_empty_join(t);
 	}
 }
-/*
+
+/*****************************************************
 	SSA Construction
 */
 anode _get_def(const char* name, bb b){
@@ -613,6 +647,7 @@ anode add_phi_operands(anode id, anode& phi_node){
 		}
 
 		anode tt = read_variable(id, b);
+		((anode_ssa_name*)tt)->br_edge = e;
 
 		phi->append_operand(tt);
 	}
@@ -691,7 +726,7 @@ void fill_bb(basic_block_t *b){
 
 	b->decl_current = b->decl_context;
 	try_seal(b);
-	printf("fill the %d\n", b->index);
+
 	if (b->status & BB_FILLED)
 		return;
 	for (anode t = b->entry; t; t = ANODE_CHAIN(t)){
@@ -741,7 +776,7 @@ void get_phi_use(basic_block_t *b){
 
 void build_ssa(basic_block_t *b){
 
-	for(basic_block_t *t = b; t; t = t->next){
+	for(basic_block_t *t = b; t != EXIT_BLOCK_PTR; t = t->next){
 		fill_bb(t);
 	}
 	seal_all_last(b);

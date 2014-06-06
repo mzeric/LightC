@@ -358,22 +358,27 @@ public:
         anode fragment_origin;
         anode fragment_chain;
 };
+typedef struct edge_s *edge;
 class anode_ssa_name : public anode_node {
 public:
         anode_ssa_name(){code = IR_SSA_NAME;}
         anode_ssa_name(anode id){
             var     = id;
             code    = IR_SSA_NAME;
-            phi     = NULL;;
+            phi     = NULL;
+            br_edge = NULL;
         }
         void set_phi(anode p){
             phi = p;
         }
+        void set_edge(edge e){ br_edge = e;}
         bool is_phi(){return phi;}
+        bool is_phi_var(){return br_edge;}
         anode var; /* NULL means phi node */
         anode def_stmt;
         std::set<anode> ulist;
         anode phi;
+        edge  br_edge;
 };
 struct ssa_name_comparator{
     bool operator()(const anode &l, const anode &r)const{
@@ -532,7 +537,7 @@ anode build_parm_decl(anode a, anode b);
 
 
 
-basic_block_t *build_cfg(anode s, basic_block_t*b, basic_block_t *e, const char*c);
+basic_block_t *build_func_cfg(anode t);
 void simplify_bb(basic_block_t *b);
 void dump_bb(basic_block_t* t);
 void dump_stmt(anode s);

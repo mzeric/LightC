@@ -8,6 +8,8 @@
 */
 #include <stdio.h>
 #include <stdlib.h>
+#include <algorithm>
+#include <vector>
 
 #include "dfa.h"
 #include "anode.h"
@@ -147,6 +149,60 @@ void build_bb_use_def(basic_block_t *b) {
 
     }
 }
+void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
+    bool in_changed = true;
+
+    EXIT_BLOCK_PTR->live->in.clear();
+
+    for (basic_block_t *b = start; b != end; b = b->next)
+        b->live->out.clear();
+
+    while(in_changed) {
+        in_changed = false;
+        for (basic_block_t *b = start; b != end; b = b->next) {
+            /* 
+                out(b) = in(b->succ) || in (b->succ) 
+                in(b) = use(b) || (out(b) - def(b))
+            */
+            live_set_t union_out;
+            live_set_t diff_set;
+            live_set_t union_in;
+
+            for (edge e = b->succ; e; e = e->succ_next){
+                live_set_t::iterator succ_iter;
+                for (succ_iter = e->dst->live->in.begin();
+                        succ_iter != e->dst->live->in.end(); ++succ_iter){
+                    assert(anode_code(*succ_iter) == IR_SSA_NAME);
+                    anode_ssa_name *s_name = (anode_ssa_name*)*succ_iter;
+                    if (s_name->br_edge){
+                        basic_block_t *succ_bb = s_name->br_edge->src;
+                        if (s_name->br_edge->src == b)
+                            union_out.insert(*succ_iter);
+                    }else
+
+                        union_out.insert(*succ_iter);
+
+                }
+
+            }
+            set_difference(union_out.begin(), union_out.end(),
+                            b->live->def.begin(), b->live->def.end(),
+                            std::inserter(diff_set, diff_set.begin()));
+
+            set_union(b->live->use.begin(), b->live->use.end(),
+                            diff_set.begin(), diff_set.end(),
+                            std::inserter(union_in, union_in.begin()));
+            if (b->live->in != union_in)
+                in_changed = true;
+            b->live->in = union_in;
+            b->live->out = union_out;
+
+            
+
+        }
+    }
+    
+}
 void build_bb_def(basic_block_t *b) {
 
 }
@@ -190,8 +246,11 @@ bool same_expr(anode e_a, anode e_b) {
 
 }
 void dfa_handle(basic_block_t *b){
-    for (basic_block_t *t = b->next; t; t = t->next){
+    EXIT_BLOCK_PTR->live = new live_ness_t();
+    ENTRY_BLOCK_PTR->live = new live_ness_t();
+    for (basic_block_t *t = b; t != EXIT_BLOCK_PTR; t = t->next){
         build_bb_use_def(t);
     }
+    compute_bb_liveness(b, EXIT_BLOCK_PTR);
     //inplace_merge;
 }

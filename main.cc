@@ -28,11 +28,14 @@ int main(){
 	fflush(stdin);
 	printf("after all\n");
 	dump_block_list(top_ast_node, 0);
-	basic_block_t *t = build_cfg(top_ast_node, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
+	build_func_cfg(top_ast_node);//, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
+
 	simplify_bb(ENTRY_BLOCK_PTR->next);
 	//make_edge(get_bb(ENTRY_BLOCK_PTR, 8), get_bb(ENTRY_BLOCK_PTR, 6), 0);
-	build_ssa(ENTRY_BLOCK_PTR);
-	dfa_handle(ENTRY_BLOCK_PTR);
+	build_ssa(ENTRY_BLOCK_PTR->next);
+	dfa_handle(ENTRY_BLOCK_PTR->next);
 
 	dump_bb(ENTRY_BLOCK_PTR);
+
+
 }

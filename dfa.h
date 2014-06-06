@@ -2,7 +2,7 @@
 #define DFA_H
 
 #include <set>
-
+#include <vector>
 using namespace std;
 
 typedef struct anode_node *anode;
@@ -20,5 +20,6 @@ struct live_ness_t{
 extern anode_node undefine_variable;
 extern anode_node uninitial_variable;
 void dfa_handle(basic_block_t *b);
+
 
 #endif
