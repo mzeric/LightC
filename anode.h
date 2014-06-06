@@ -366,19 +366,19 @@ public:
             var     = id;
             code    = IR_SSA_NAME;
             phi     = NULL;
-            br_edge = NULL;
+
         }
         void set_phi(anode p){
             phi = p;
         }
-        void set_edge(edge e){ br_edge = e;}
+
         bool is_phi(){return phi;}
-        bool is_phi_var(){return br_edge;}
+
         anode var; /* NULL means phi node */
         anode def_stmt;
         std::set<anode> ulist;
         anode phi;
-        edge  br_edge;
+
 };
 struct ssa_name_comparator{
     bool operator()(const anode &l, const anode &r)const{
@@ -455,6 +455,8 @@ enum edge_flag{
     EDGE_FALSE,
 };
 //#include "dfa.h"
+typedef std::map<anode, edge> phi_edge_t;
+
 typedef struct basic_block_s{
         unsigned                index; /* used for goto expr */
         struct basic_block_s    *prev, *next; /* the chain */
@@ -469,6 +471,7 @@ typedef struct basic_block_s{
         int                     status;
 
         anode                   phi;   /* all phi instructs linked by ->chain */
+        phi_edge_t              *phi_edge;
         struct live_ness_t      *live;
 
 }basic_block_t, *bb;
@@ -490,11 +493,15 @@ public:
             code = IR_PHI;
 
         }
-        void append_operand(anode n){/* append to order by pred-edge; must be list 4 same value issue */
+        void append_operand(anode n, edge e){/* append to order by pred-edge; must be list 4 same value issue */
             anode l = build_list(NULL, n);
             targets = chain_cat(targets, l);
             l->chain = NULL;
+            printf("map set %d %x, %x\n", block->index, n , e);
+            (*(block->phi_edge))[n] = e;
+            printf("map get %x\n", block->phi_edge->at(n));
         }
+
         void replace_by(anode new_v){
             std::set<anode*>::iterator iter;
             for (iter = users->begin(); iter != users->end(); ++iter){

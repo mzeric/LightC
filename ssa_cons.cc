@@ -119,6 +119,7 @@ void init_bb(basic_block_t*b, basic_block_t *ahead){
 	b->status = BB_UNFILLED;
 	b->phi = NULL;
 	b->live = new live_ness_t();
+	b->phi_edge = new phi_edge_t();
 }
 basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
 	printf("new_basic_block  %s after %u:%s\n", comment, ahead->index, ahead->comment);
@@ -303,7 +304,7 @@ void inline print_var(anode v){
 			anode_code_name(anode_code(v)));
 
 }
-void inline print_ssa_var(anode_ssa_name *ssa) {
+void  print_ssa_var(anode_ssa_name *ssa) {
 
 	if (!ssa)return;
 	if (ssa == &undefine_variable || ssa->var == &undefine_variable){
@@ -312,12 +313,10 @@ void inline print_ssa_var(anode_ssa_name *ssa) {
 	}
 
 	if (ssa->is_phi()){
-		printf ("%s.%d_phi %x",IDENTIFIER_POINTER(decl_name(ssa->var)),	ssa->version, ssa);
-	}else if (ssa->is_phi_var()){
-		printf ("%s.%d %d %x",IDENTIFIER_POINTER(decl_name(ssa->var)),
-			ssa->version, ssa->br_edge->src->index, ssa);
+		printf ("%s.%d_phi %x",IDENTIFIER_POINTER(decl_name(ssa->var)),	ssa->version, ssa->var);
+
 	}else{	
-		printf ("%s.%d %x",IDENTIFIER_POINTER(decl_name(ssa->var)), ssa->version, ssa);
+		printf ("%s.%d %x",IDENTIFIER_POINTER(decl_name(ssa->var)), ssa->version, ssa->var);
 	}
 
 }
@@ -647,9 +646,8 @@ anode add_phi_operands(anode id, anode& phi_node){
 		}
 
 		anode tt = read_variable(id, b);
-		((anode_ssa_name*)tt)->br_edge = e;
 
-		phi->append_operand(tt);
+		phi->append_operand(tt, e);
 	}
 	return simplify_phi(phi);
 }

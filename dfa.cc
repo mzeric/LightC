@@ -124,8 +124,9 @@ void build_bb_use_def(basic_block_t *b) {
         if (anode_code(iter->second) == IR_PHI){
             printf("SUDDEN PHI\n");
             anode_phi *phi = (anode_phi*)iter->second;
-            for (anode t = phi->targets; t; t = ANODE_CHAIN(t))
+            for (anode t = phi->targets; t; t = ANODE_CHAIN(t)){
                 b->live->use.insert(ANODE_VALUE(t));
+            }
         }
         b->live->def.insert(iter->first);
     }
@@ -155,35 +156,56 @@ void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
     EXIT_BLOCK_PTR->live->in.clear();
 
     for (basic_block_t *b = start; b != end; b = b->next)
-        b->live->out.clear();
-
+        b->live->in.clear();
+extern void print_ssa_var(anode_ssa_name*);
     while(in_changed) {
         in_changed = false;
+        printf("compute liveness\n");
         for (basic_block_t *b = start; b != end; b = b->next) {
             /* 
                 out(b) = in(b->succ) || in (b->succ) 
                 in(b) = use(b) || (out(b) - def(b))
             */
+            printf("c %d\n", b->index);
             live_set_t union_out;
             live_set_t diff_set;
             live_set_t union_in;
 
             for (edge e = b->succ; e; e = e->succ_next){
                 live_set_t::iterator succ_iter;
-                for (succ_iter = e->dst->live->in.begin();
-                        succ_iter != e->dst->live->in.end(); ++succ_iter){
+                live_ness_t *np = e->dst->live;
+                printf("get succ %d\n", e->dst->index);
+                for (succ_iter = np->in.begin(); succ_iter != np->in.end(); ++succ_iter){
                     assert(anode_code(*succ_iter) == IR_SSA_NAME);
                     anode_ssa_name *s_name = (anode_ssa_name*)*succ_iter;
-                    if (s_name->br_edge){
-                        basic_block_t *succ_bb = s_name->br_edge->src;
-                        if (s_name->br_edge->src == b)
-                            union_out.insert(*succ_iter);
-                    }else
+                    edge be = (*e->dst->phi_edge)[s_name];
+                    for (phi_edge_t::iterator iter = e->dst->phi_edge->begin(); iter != e->dst->phi_edge->end();
+                        ++iter){
+                        printf("map test %d %x %x\n", e->dst->index, iter->first, iter->second);
+                    }
+                    if (be){
+                        basic_block_t *succ_bb = be->src;
 
+                        if (be->src == b){
+                            union_out.insert(*succ_iter);
+                        }
+                        print_ssa_var((anode_ssa_name*)*succ_iter);printf("\n");
+                    }else{
+
+                        print_ssa_var((anode_ssa_name*)*succ_iter);
                         union_out.insert(*succ_iter);
+                    }
 
                 }
 
+            }
+
+            if (b->index == 11){
+                for (live_set_t::iterator iter = union_out.begin(); iter != union_out.end();++iter){
+                    printf("11 out: \n\t");
+                    print_ssa_var((anode_ssa_name*)*iter);
+                }
+                printf("\n");
             }
             set_difference(union_out.begin(), union_out.end(),
                             b->live->def.begin(), b->live->def.end(),
@@ -192,8 +214,13 @@ void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
             set_union(b->live->use.begin(), b->live->use.end(),
                             diff_set.begin(), diff_set.end(),
                             std::inserter(union_in, union_in.begin()));
-            if (b->live->in != union_in)
+            if (b->live->in != union_in){
+                printf("change %d's in\n", b->index);
                 in_changed = true;
+            }
+            if (b->live->out != union_out){
+                printf("chage %d's out\n", b->index);
+            }
             b->live->in = union_in;
             b->live->out = union_out;
 
@@ -246,8 +273,6 @@ bool same_expr(anode e_a, anode e_b) {
 
 }
 void dfa_handle(basic_block_t *b){
-    EXIT_BLOCK_PTR->live = new live_ness_t();
-    ENTRY_BLOCK_PTR->live = new live_ness_t();
     for (basic_block_t *t = b; t != EXIT_BLOCK_PTR; t = t->next){
         build_bb_use_def(t);
     }
