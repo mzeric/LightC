@@ -454,9 +454,9 @@ enum edge_flag{
     EDGE_TRUE,
     EDGE_FALSE,
 };
-//#include "dfa.h"
+#include "dfa.h"
 typedef std::map<anode, edge> phi_edge_t;
-
+typedef std::map<anode, live_set_t> stmt_live_t;
 typedef struct basic_block_s{
         unsigned                index; /* used for goto expr */
         struct basic_block_s    *prev, *next; /* the chain */
@@ -473,8 +473,9 @@ typedef struct basic_block_s{
         anode                   phi;   /* all phi instructs linked by ->chain */
         phi_edge_t              *phi_edge;
         struct live_ness_t      *live;
+        stmt_live_t             *stmt_live;
 
-}basic_block_t, *bb;
+}basic_block_t,bb_t, *bb;
 
 typedef struct edge_s{
 
@@ -497,9 +498,7 @@ public:
             anode l = build_list(NULL, n);
             targets = chain_cat(targets, l);
             l->chain = NULL;
-            printf("map set %d %x, %x\n", block->index, n , e);
             (*(block->phi_edge))[n] = e;
-            printf("map get %x\n", block->phi_edge->at(n));
         }
 
         void replace_by(anode new_v){

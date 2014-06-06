@@ -119,6 +119,7 @@ void init_bb(basic_block_t*b, basic_block_t *ahead){
 	b->status = BB_UNFILLED;
 	b->phi = NULL;
 	b->live = new live_ness_t();
+	b->stmt_live = new map<anode, live_set_t>();
 	b->phi_edge = new phi_edge_t();
 }
 basic_block_t *new_basic_block(anode head, bb ahead, const char *comment){
@@ -326,7 +327,7 @@ void dump_bb(basic_block_t *start_bb){
 		int i = 0;
 		printf("block %u %s %x\n", b->index, b->comment, b->decl_context);
 		ssa_table_t::iterator iter;
-		printf("decl_space 0x%x : 0x%x\n", b->decl_context, b->decl_current);
+
 		if(b->ssa_table){
 			printf("has use-def table status %d\n", b->status);
 			for(iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){

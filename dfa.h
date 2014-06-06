@@ -12,6 +12,8 @@ struct live_ness_t{
 
         live_set_t  gen;
         live_set_t  kill;
+        live_set_t  phi_use;
+        live_set_t  phi_def;
         live_set_t  use;
         live_set_t  def;
         live_set_t  in;

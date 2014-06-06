@@ -52,6 +52,7 @@ bool is_val(anode n){
 anode get_ssa_def(anode e, bb b){
     return read_variable(get_def(e, b), b);
 }
+/*    get use & def of one stmt  */
 void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def){
         /* some expr in cfg left NULL intendely as ir_branch(cond, NULL, NULL) */
         if (!expr)
@@ -104,32 +105,26 @@ void get_gen(anode stmt, basic_block_t *b, set<anode> &v){
 void get_kill(anode stmt, basic_block_t *b, set<anode> &v){
 
 }
-void build_bb_gen(basic_block_t *b) {
-        /* for ssa it's defs also, in ssa_table */
-        ssa_table_t::iterator iter;
-        for (iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
-            if (anode_code(iter->second) != IR_PHI)
-                b->live->gen.insert(iter->first);
-        }
-}
-void build_bb_kill(basic_block_t *b) {
 
-}
 void build_bb_use_def(basic_block_t *b) {
 
-
+    b->live->use.clear();
+    b->live->def.clear();
     for (ssa_table_t::iterator iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
 
         assert(iter->first);
         if (anode_code(iter->second) == IR_PHI){
-            printf("SUDDEN PHI\n");
+
             anode_phi *phi = (anode_phi*)iter->second;
             for (anode t = phi->targets; t; t = ANODE_CHAIN(t)){
-                b->live->use.insert(ANODE_VALUE(t));
+                b->live->phi_use.insert(ANODE_VALUE(t));
+
             }
+            b->live->phi_def.insert(iter->first);
         }
         b->live->def.insert(iter->first);
     }
+    b->live->use = b->live->phi_use;
 
     for (anode stmt_list = b->entry; stmt_list; stmt_list = ANODE_CHAIN(stmt_list)){
         anode stmt = ANODE_VALUE(stmt_list);
@@ -141,7 +136,7 @@ void build_bb_use_def(basic_block_t *b) {
 
         get_all_var(stmt, b, l_use, l_def);
         /* phi is nor var */
-
+        (*b->stmt_live)[stmt] = l_use;
         for (live_set_t::iterator iter = l_use.begin(); iter != l_use.end(); ++iter){
                 if (b->live->def.find(*iter) == b->live->def.end())
                     b->live->use.insert(*iter);
@@ -150,6 +145,11 @@ void build_bb_use_def(basic_block_t *b) {
 
     }
 }
+/******************************************************************
+
+
+
+******************************************************************/
 void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
     bool in_changed = true;
 
@@ -157,16 +157,16 @@ void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
 
     for (basic_block_t *b = start; b != end; b = b->next)
         b->live->in.clear();
-extern void print_ssa_var(anode_ssa_name*);
+
     while(in_changed) {
         in_changed = false;
-        printf("compute liveness\n");
+
         for (basic_block_t *b = start; b != end; b = b->next) {
             /* 
-                out(b) = in(b->succ) || in (b->succ) 
+                out(b) = phi_in(b->succ) || phi_in (b->succ) 
                 in(b) = use(b) || (out(b) - def(b))
             */
-            printf("c %d\n", b->index);
+
             live_set_t union_out;
             live_set_t diff_set;
             live_set_t union_in;
@@ -174,39 +174,23 @@ extern void print_ssa_var(anode_ssa_name*);
             for (edge e = b->succ; e; e = e->succ_next){
                 live_set_t::iterator succ_iter;
                 live_ness_t *np = e->dst->live;
-                printf("get succ %d\n", e->dst->index);
+
                 for (succ_iter = np->in.begin(); succ_iter != np->in.end(); ++succ_iter){
                     assert(anode_code(*succ_iter) == IR_SSA_NAME);
-                    anode_ssa_name *s_name = (anode_ssa_name*)*succ_iter;
-                    edge be = (*e->dst->phi_edge)[s_name];
-                    for (phi_edge_t::iterator iter = e->dst->phi_edge->begin(); iter != e->dst->phi_edge->end();
-                        ++iter){
-                        printf("map test %d %x %x\n", e->dst->index, iter->first, iter->second);
-                    }
-                    if (be){
-                        basic_block_t *succ_bb = be->src;
 
-                        if (be->src == b){
-                            union_out.insert(*succ_iter);
-                        }
-                        print_ssa_var((anode_ssa_name*)*succ_iter);printf("\n");
-                    }else{
+                    edge be = (*e->dst->phi_edge)[(anode_ssa_name*)*succ_iter];
+           
+                    if (be && be->src != b)
+                        continue;
 
-                        print_ssa_var((anode_ssa_name*)*succ_iter);
-                        union_out.insert(*succ_iter);
-                    }
+                    union_out.insert(*succ_iter);
+                    
 
                 }
 
             }
 
-            if (b->index == 11){
-                for (live_set_t::iterator iter = union_out.begin(); iter != union_out.end();++iter){
-                    printf("11 out: \n\t");
-                    print_ssa_var((anode_ssa_name*)*iter);
-                }
-                printf("\n");
-            }
+
             set_difference(union_out.begin(), union_out.end(),
                             b->live->def.begin(), b->live->def.end(),
                             std::inserter(diff_set, diff_set.begin()));
@@ -214,24 +198,51 @@ extern void print_ssa_var(anode_ssa_name*);
             set_union(b->live->use.begin(), b->live->use.end(),
                             diff_set.begin(), diff_set.end(),
                             std::inserter(union_in, union_in.begin()));
-            if (b->live->in != union_in){
-                printf("change %d's in\n", b->index);
+            if (b->live->in != union_in)
                 in_changed = true;
-            }
-            if (b->live->out != union_out){
-                printf("chage %d's out\n", b->index);
-            }
-            b->live->in = union_in;
-            b->live->out = union_out;
 
-            
+
+            b->live->in = union_in;
+            b->live->out = union_out;            
 
         }
     }
     
 }
-void build_bb_def(basic_block_t *b) {
+/* compute after build the in/out */
+void build_bb_gen(basic_block_t *b) {
+        /* for ssa it's defs also, in ssa_table */
+        ssa_table_t::iterator iter;
+        live_set_t t_set;
+        for (iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
+            if (anode_code(iter->second) != IR_PHI)
+                t_set.insert(iter->first);
+        }
+        set_intersection(t_set.begin(), t_set.end(),
+                    b->live->out.begin(), b->live->out.end(),
+                    inserter(b->live->gen, b->live->gen.begin()));
+}
+void build_bb_kill(basic_block_t *b) {
+        /* || OUT(pred(b)) - OUT(b) */
+}
+void compute_stmt_live(bb_t *b){
+    live_set_t start_live;
+    set_difference(b->live->in.begin(), b->live->in.end(),
+                b->live->phi_use.begin(), b->live->phi_use.end(),
+                std::inserter(start_live, start_live.begin()));
+    start_live.insert(b->live->phi_def.begin(), b->live->phi_def.end());
+    stmt_live_t stmt_live = *b->stmt_live;
+    /*
+        start_live = start_live + use
+    */
+    for (anode stmt = b->entry; stmt; stmt = ANODE_CHAIN(stmt)){
 
+    }
+}
+void compute_bb_gen_kill(basic_block_t *start, basic_block_t *end){
+    for (bb_t *b_b = start; b_b != end; b_b = b_b->next){
+
+    }
 }
 /* calc the define-rechable in/out of bb */
 
@@ -243,13 +254,7 @@ void build_bb_def(basic_block_t *b) {
     once have the Defs-DAG, we got Liveness at each stmt, if it on path of some var's Def-use path
 
 */
-template<typename T>
-void build_edge(T src, T dst, int flag){
 
-}
-void t_test_df(){
-    build_edge<int>(1, 2, 3);
-}
 bool same_expr(anode e_a, anode e_b) {
     if (anode_code(e_a) == IDENTIFIER_NODE && 
         anode_code(e_b) == IDENTIFIER_NODE){
@@ -277,5 +282,7 @@ void dfa_handle(basic_block_t *b){
         build_bb_use_def(t);
     }
     compute_bb_liveness(b, EXIT_BLOCK_PTR);
-    //inplace_merge;
+    for (basic_block_t *t = b; t != EXIT_BLOCK_PTR; t = t->next){
+        compute_stmt_live(t);
+    }
 }
