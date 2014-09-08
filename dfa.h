@@ -18,6 +18,9 @@ struct live_ness_t{
         live_set_t  def;
         live_set_t  in;
         live_set_t  out;
+
+        live_set_t      r_in;
+        live_set_t      r_out;
 };
 extern anode_node undefine_variable;
 extern anode_node uninitial_variable;

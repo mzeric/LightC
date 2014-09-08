@@ -6,6 +6,7 @@
 #include "anode.h"
 #include "parse.hh"
 #include "dfa.h"
+#include "lower.h"
 extern int yydebug;
 extern char *yytext;
 extern int yyleng;
@@ -32,6 +33,7 @@ int main(){
 
 	simplify_bb(ENTRY_BLOCK_PTR->next);
 	//make_edge(get_bb(ENTRY_BLOCK_PTR, 8), get_bb(ENTRY_BLOCK_PTR, 6), 0);
+	lower_bb(ENTRY_BLOCK_PTR->next);
 	build_ssa(ENTRY_BLOCK_PTR->next);
 	dfa_handle(ENTRY_BLOCK_PTR->next);
 

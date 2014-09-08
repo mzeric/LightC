@@ -4,7 +4,7 @@
         description:
                 Data Flow Analysis, compute the def-use,liveness, etc
 
-    two space : syntax lex space, cfg flow space, later matter more here
+    two space : syntax lex space, cfg flow space, latter matters more here
 */
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,7 +62,7 @@ void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def){
             printf("\tundefine_variable\n");
             return;
         }
-        printf("\t%s\n", anode_code_name(anode_code(expr)));
+        printf("\tGET_ALL_VAR %s\n", anode_code_name(anode_code(expr)));
         if (anode_code(expr) == IDENTIFIER_NODE){
             printf("id:%s\n",IDENTIFIER_POINTER(decl_name(expr)));
             
@@ -225,6 +225,26 @@ void build_bb_gen(basic_block_t *b) {
 void build_bb_kill(basic_block_t *b) {
         /* || OUT(pred(b)) - OUT(b) */
 }
+void kill_kill(live_set_t &old, live_set_t &def){
+
+    for (live_set_t::iterator iter = old.begin(); iter != old.end(); ++iter){
+        for (live_set_t::iterator def_iter = def.begin(); def_iter != def.end(); ++def_iter){
+            printf("kill is_ssa_name? %s\n", anode_code_name(anode_code(*iter)));
+            if ((*iter)->code == IR_SSA_NAME){
+                anode_ssa_name *a = (anode_ssa_name*)&(*iter);
+                anode_ssa_name *b = (anode_ssa_name*)&(*def_iter);
+                printf("kill %s -> %s\n", anode_code_name(anode_code(a)),
+                        anode_code_name(anode_code(b)));
+                if (a->var == b->var ){
+                    assert (a->version < b->version);
+                    printf("kill kill\n");
+                    old.erase(iter);
+                }
+            }        
+
+        }
+    }
+}
 void compute_stmt_live(bb_t *b){
     live_set_t start_live;
     set_difference(b->live->in.begin(), b->live->in.end(),
@@ -235,8 +255,22 @@ void compute_stmt_live(bb_t *b){
     /*
         start_live = start_live + use
     */
+    live_set_t lp = b->live->in;
     for (anode stmt = b->entry; stmt; stmt = ANODE_CHAIN(stmt)){
+        live_set_t l_use, l_def;
 
+        get_all_var(stmt, b, l_use, l_def);
+        printf("debug kill %lu, %lu\n", l_use.size(), l_def.size());
+        /* GEN = l_use + l_def */
+        lp.insert(l_use.begin(), l_use.end());
+        lp.insert(l_def.begin(), l_def.end());
+
+        /* KILL = ssa_name < l_def */
+
+        /* lpn = lpn' + GENn - KILLn*/
+        printf("handle kill %lu, %lu\n", lp.size(), l_def.size());
+        kill_kill(lp, l_def);
+        (*b->stmt_live)[stmt] = lp;
     }
 }
 void compute_bb_gen_kill(basic_block_t *start, basic_block_t *end){

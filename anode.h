@@ -22,6 +22,8 @@ class anode_node;
 typedef anode_node* anode;
 extern anode top_ast_node;
 
+typedef std::set<anode> Set;
+
 #define HOST_WIDTH_INT  int
 
 extern int anode_code_length(int node);
@@ -147,6 +149,7 @@ public:
     }
 
     std::set<anode*> *users;/* list */
+    Set     def, use;
 };
 
 typedef struct location_s{

@@ -9,7 +9,8 @@ int func(void){
 		int f1;
 		int d;
 		if(1){f1 = 3;d=1;}
-		f1 = d;
+		f1 = 4;
+		f1 = f1 + d;
 	}else{
 
 		int f2;

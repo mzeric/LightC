@@ -1,5 +1,5 @@
 
-OBJS=token.o anode.o main.o decl.o ssa_cons.o parse.o dfa.o
+OBJS=token.o anode.o main.o decl.o ssa_cons.o parse.o dfa.o ra.o lower.o
 Headers=  anode.h
 CFLAGS=-g -std=gnu99
 CXXFLAGS=-g
