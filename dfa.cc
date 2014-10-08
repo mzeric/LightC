@@ -260,7 +260,7 @@ void compute_stmt_live(bb_t *b){
         live_set_t l_use, l_def;
 
         get_all_var(stmt, b, l_use, l_def);
-        printf("debug kill %lu, %lu\n", l_use.size(), l_def.size());
+        //printf("debug kill %lu, %lu\n", l_use.size(), l_def.size());
         /* GEN = l_use + l_def */
         lp.insert(l_use.begin(), l_use.end());
         lp.insert(l_def.begin(), l_def.end());
@@ -268,7 +268,7 @@ void compute_stmt_live(bb_t *b){
         /* KILL = ssa_name < l_def */
 
         /* lpn = lpn' + GENn - KILLn*/
-        printf("handle kill %lu, %lu\n", lp.size(), l_def.size());
+        //printf("handle kill %lu, %lu\n", lp.size(), l_def.size());
         kill_kill(lp, l_def);
         (*b->stmt_live)[stmt] = lp;
     }

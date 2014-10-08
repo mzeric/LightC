@@ -29,7 +29,7 @@ int main(){
 	yyparse();
 	fflush(stdin);
 	printf("after all\n");
-	dump_block_list(top_ast_node, 0);
+	//dump_block_list(top_ast_node, 0);
 	build_func_cfg(top_ast_node);//, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
 
 	simplify_bb(ENTRY_BLOCK_PTR->next);
@@ -39,7 +39,7 @@ int main(){
 	build_ssa(ENTRY_BLOCK_PTR->next);
 	dfa_handle(ENTRY_BLOCK_PTR->next);
 
-	dump_bb(ENTRY_BLOCK_PTR);
+	//dump_bb(ENTRY_BLOCK_PTR);
 
 
 }

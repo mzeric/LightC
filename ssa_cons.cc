@@ -160,6 +160,11 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	anode if_cond = IF_COND(if_stmt);
 	anode then_stmt = THEN_CLAUSE(if_stmt);
 	anode else_stmt = ELSE_CLAUSE(if_stmt);
+	/* 
+		IR_BRANCH : the true_jump & false_jump set in the edge->flag ie:EDGE_TRUE 
+		so the IR_BRANCH only need ONE operand
+
+	*/
 	anode ir_br = build_stmt(IR_BRANCH, if_cond, NULL, NULL);
 	anode old_c = COMPOUND_DS_OUTER((anode_expr*)if_cond);
 

@@ -21,7 +21,7 @@ enum anode_code{
 class anode_node;
 typedef anode_node* anode;
 extern anode top_ast_node;
-
+extern anode anode_null;
 typedef std::set<anode> Set;
 
 #define HOST_WIDTH_INT  int

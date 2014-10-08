@@ -4,6 +4,9 @@ anode current_function_decl;
 static int next_decl_uid;
 static int next_type_uid = 1;
 //location_t input_location;
+
+anode anode_null = NULL;
+
 int in_system_header = 0;
 #define DEFTREECODE(sym, name, type, length) name,
 const char* _anode_code_name[] = {
