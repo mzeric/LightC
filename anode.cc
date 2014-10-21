@@ -36,6 +36,7 @@ const unsigned char _anode_code_length[] = {
 #undef DEFTREECODE
 //int anode_type(anode node){ return node->type; }
 int anode_code(anode node){ return node->code; }
+
 int anode_code_length(int code) { return _anode_code_length[(int)code]; }
 void anode_set_code(anode node, int value) { node->code = value; }
 int anode_code_class(int code) { return anode_code_type[(int)code]; }
@@ -126,6 +127,14 @@ anode build_list(anode p, anode v){
         ANODE_VALUE(l) = v;
         l->purpose = p;
         return l;
+}
+anode build_decl(enum anode_code code, anode name, anode type){
+        anode_decl *t = new anode_decl();
+        ANODE_CODE(t) = code;
+        ANODE_DECL_NAME(t) = name;
+        ANODE_TYPE(t) = type;
+
+        return t;
 }
 anode chain_cat(anode a, anode b){
         anode t;

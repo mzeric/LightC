@@ -5,6 +5,7 @@
 #include <assert.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 #include <string>
 #include <vector>
 #include <set>
@@ -19,7 +20,10 @@ enum anode_code{
 #undef DEFTREECODE
 
 class anode_node;
+class anode_list;
 typedef anode_node* anode;
+typedef anode_list* anode_seq;
+
 extern anode top_ast_node;
 extern anode anode_null;
 typedef std::set<anode> Set;
@@ -27,6 +31,7 @@ typedef std::set<anode> Set;
 #define HOST_WIDTH_INT  int
 
 extern int anode_code_length(int node);
+#define ANODE_CODE(t) (t)->code
 extern int anode_code(anode node);
 extern int anode_code_class(int code);
 extern const char* anode_code_name(int code);
@@ -176,14 +181,14 @@ public:
 	}
 	int 	int_cst;
 };
-class anode_string : public anode_node{
+class anode_string_cst : public anode_node{
 public:
-	anode_string(char *str){
+	anode_string_cst(char *str){
 		code = STRING_CST;
 		pointer = strdup(str);
 		length = strlen(str);
 	}
-	~anode_string(){
+	~anode_string_cst(){
 		free((void*)pointer);
 	}
 public:
@@ -466,6 +471,7 @@ typedef struct basic_block_s{
         anode                   list;		/* use list to link stmt inside bb instead modify The AST */
         anode                   outer_loop; /* outer loop for break */
         anode                   entry, exit; /* first & last node of the block */
+        anode                   lower_ir;
         struct edge_s           *pred, *succ; /* edges in / out of the block */
         anode                   decl_context; /* store the current_declspaces */
         anode                   decl_current;
@@ -541,7 +547,7 @@ extern struct basic_block_s *current_bb;
 void dump_block_list(anode l, int le);
 void print_decl(anode l);
 anode build_func_decl(anode declar, anode params);
-anode build_decl(anode speci, anode declar);
+anode build_decl(enum anode_code, anode speci, anode declar);
 anode build_parm_decl(anode a, anode b);
 
 

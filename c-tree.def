@@ -323,3 +323,4 @@ DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 1)
 DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)
 DEFTREECODE (IR_NONE, "ir_none", 'n', 0)
 
+DEFTREECODE (WITH_SIZE_EXPR, "with_size_expr", 'e', 2)

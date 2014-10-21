@@ -223,7 +223,7 @@ primary_expression /* operand of a expression */
 	}
 	| STRING_LITERAL{
 		check("literal");
-
+		$$ = new anode_string_cst($1);
 		//$$ = new AST_literal($1);
 		//delete $1; /* free the lexer's std::string* */
 	}
@@ -473,19 +473,30 @@ declaration
 	}//声明前缀 类型 int 等
 	| declaration_specifiers  init_declarator_list ';' {
 		anode t;
-		for (t = $2; t; t = ANODE_CHAIN(t)){
-			ANODE_TYPE(ANODE_VALUE(t)) = $1;
-			anode d = build_var_decl($1, ANODE_VALUE(t));
+		
+		
+		anode p = ANODE_VALUE($2);
+		ANODE_TYPE(p) = $1;
+		push_decl(p);
+
+		for (t = ANODE_CHAIN($2); t; t = ANODE_CHAIN(t)){
+			anode d = ANODE_VALUE(t);
+
+			ANODE_TYPE(d) = $1;
 			push_decl(d);
-			$$ = d;
-			check("Full 声明 (%s %s = c)",	
+			ANODE_CHAIN(p) = d;
+			p = d;
+		
+			check("lower Full 声明 (%s %s = c)\n",
 				anode_code_name(anode_code(ANODE_TYPE(ANODE_VALUE(t)))),
 				IDENTIFIER_POINTER(decl_name(ANODE_VALUE(t))),current_declspaces);
 
 		}
 		/* 从 decl_specifiers里提取type_specifier */
+		/* DECL_STMT may contain only one or many VAR_DECLs */
+		$$ = build_stmt(DECL_STMT, ANODE_VALUE($2));
 
-		
+
 	} //完整声明 包含变量名 或 初值 、类型
 	;
 
@@ -539,15 +550,15 @@ init_declarator
 		$$ = $1;
 		ANODE_($$, anode_decl)->initial = NULL;
 		check("one declarator");
-		//$$ = new AST_decl_var($1, NULL);
+
 	}
 	| declarator ASSIGN initializer {
 		check("one declarator+assign");
 		$$ = $1;
 		build_stmt(INIT_EXPR, $1, $3);
+		/* we will expand the INIT_EXPR in lower-step */
 		ANODE_($$, anode_decl)->initial = $3;
-		// if initializer is constant, just store within the Fvalue $->ir;
-		//$$ = new AST_decl_var($1, $3);
+
 	}
 	;
 

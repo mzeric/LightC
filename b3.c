@@ -1,4 +1,4 @@
-int  foo, fool;
+int  foo, fool = 1;
 int hello;
 int dump(void);
 int func(void){

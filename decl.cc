@@ -97,9 +97,6 @@ anode decl_name(anode node){
         return ANODE_CLASS_CHECK(t, 'd')->name;
 }
 
-anode build_decl(anode speci, anode delcar){
-        return NULL;
-}
 anode build_var_decl(anode speci, anode decl){
 
         ANODE_CLASS_CHECK(decl, 'd');
@@ -137,6 +134,13 @@ anode build_stmt(int code, ...){
         va_end(vp);
         return t;
 }
-anode add_stmt(anode tree){
+
+
+anode get_last_stmt(anode tree){
+    return chain_last(tree);
+}
+anode add_stmt(anode *dst, anode src){
+    anode last = get_last_stmt(*dst);
+    ANODE_CHAIN(last) = src;
       return NULL;
 }
