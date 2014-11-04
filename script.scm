@@ -89,3 +89,7 @@
     (tp)
     (block->dot "all.dot" (tp2))
     (format #t "guile-end: ~A\n" (tp2)))
+
+;; After SSA-Construction
+(define (hook_ssa)
+  (display "guile ssa dump\n"))

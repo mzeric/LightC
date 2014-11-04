@@ -290,7 +290,7 @@ void compute_bb_gen_kill(basic_block_t *start, basic_block_t *end){
 */
 
 bool same_expr(anode e_a, anode e_b) {
-    if (anode_code(e_a) == IDENTIFIER_NODE && 
+    if (anode_code(e_a) == IDENTIFIER_NODE &&
         anode_code(e_b) == IDENTIFIER_NODE){
             if (strcmp(IDENTIFIER_POINTER(decl_name(e_a)), IDENTIFIER_POINTER(decl_name(e_b))) == 0)
                 return true;

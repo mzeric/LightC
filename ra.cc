@@ -2,6 +2,7 @@
 
 Register Alloc
 
+need : dom-tree
 
 */
 #include <stdio.h>
@@ -14,21 +15,28 @@ Register Alloc
 
 
 int k_press = 0;
-
+#define MAX_NEXTUSE 0xffffff
 /**********************
 
 nextuse will NOT cross basic-block, so, if, just random pick one
 
 */
+extern void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def);
 int nextuse(anode stmt, anode var){
         assert(var);
         if (!stmt)  return 0;
         bb_t *b = stmt->basic_block;
         
+        /* var is dead here */
+        if ((*b->stmt_live)[stmt].count(var) == 0)
+            return MAX_NEXTUSE;
+        
         /* var used at l */
-        if ((*b->stmt_live)[stmt].count(var) != 0)
+        live_set_t use_set, def_set;
+        get_all_var(stmt, stmt->basic_block, use_set, def_set);
+        if (use_set.count(var) > 0)
             return 0;
-
+        
         /* var not live at l */
         // how to detect live or not
 

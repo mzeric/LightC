@@ -74,6 +74,20 @@ bool is_ir_constant(anode t)
                         return false;
         }
 }
+bool is_ir_live_memory(anode t){
+    //if (ANODE_CODE(t) == )
+}
+bool is_ir_reg(anode t)
+{
+    if (ANODE_CODE(t) == IR_SSA_NAME)
+        return true;
+
+    if (!is_ir_variable(t))
+        return false;
+    if (is_ir_live_memory(t))
+        return false;
+    return true;
+}
 bool is_ir_val(anode t)
 {
         /* valitolite is variable but not val */
@@ -114,6 +128,7 @@ bool is_ir_rhs_or_call(anode t){
         return (ir_rhs_code(t) != IR_INVALID_RHS ||
                 code == CALL_EXPR);
 }
+
 bool is_ir_xx(anode t)
 {
 
@@ -203,6 +218,8 @@ enum lower_status lower_expr(anode *expr_p, anode_seq *pre_p, anode_seq *post_p,
         anode_seq internal_pre = NULL;
         anode_seq internal_post = NULL;
 
+        anode tmp;
+
 
 
         if (*expr_p == NULL)
@@ -286,9 +303,38 @@ enum lower_status lower_expr(anode *expr_p, anode_seq *pre_p, anode_seq *post_p,
             //
             if (internal_pre != NULL || internal_post != NULL){
                 //ir
+                lower_seq_add(&internal_pre, internal_post);
+                lower_seq_add(pre_p, internal_pre);
+                goto out;
             }
         }
+
         /* only no-inter-postqueue && (id || *()) has the left-value */
+
+        if (internal_post == NULL && (*ir_test_if)(*expr_p)){
+            goto out;
+        }
+        /* new temporary needed to be created */
+        if ((how_ & how_l) && internal_post == NULL && is_ir_addressable(*expr_p)){
+
+
+            tmp = build_addr_expr(*expr_p);
+
+            lower_expr(&tmp, pre_p, post_p, is_ir_reg, how_r);
+
+            anode_int_cst *int_zero = new anode_int_cst(0);
+            ANODE_TYPE(int_zero) = new anode_type(INTEGER_TYPE);
+
+            *expr_p = build_stmt(MEM_REF, tmp, int_zero);
+
+        }else if ((how_ & how_r) && is_ir_rhs_or_call(*expr_p)){
+
+            *expr_p = get_init_tmp_var(*expr_p, pre_p, NULL);
+
+        }else {
+            ret = LS_ERROR;
+            goto out;
+        }
 
 out:
         return ret;

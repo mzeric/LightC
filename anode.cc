@@ -136,6 +136,32 @@ anode build_decl(enum anode_code code, anode name, anode type){
 
         return t;
 }
+anode build_pointer_type(anode type)
+{
+	anode_type *t = new anode_type(POINTER_TYPE);
+	ANODE_TYPE(t) = type;
+	return t;
+}
+anode build_addr_expr(anode expr)
+{
+	if (ANODE_CODE(expr) == INDIRECT_REF){
+		anode ti = ANODE_OPERAND(expr, 0);
+	}else if (ANODE_CODE(expr) == MEM_REF) {
+		anode t = ANODE_OPERAND(expr, 1);
+		if (ANODE_CODE(t) == INTEGER_CST && ((anode_int_cst*)t)->cst() == 0)
+			return ANODE_OPERAND(expr, 0);
+
+	}
+	anode t = build_stmt(ADDR_EXPR, expr);
+	ANODE_TYPE(t) = build_pointer_type(ANODE_TYPE(expr));
+	return t;
+}
+anode build1(int code, anode type, anode expr)
+{
+	anode t = build_stmt(code, expr);
+	ANODE_TYPE(t) = type;
+	return t;
+}
 anode chain_cat(anode a, anode b){
         anode t;
         if(!a)

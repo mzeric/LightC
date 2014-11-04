@@ -137,7 +137,16 @@ SCM exprp(SCM pointer)
 	anode p = (anode)scm_to_pointer(pointer);
 	return scm_from_bool(EXPR_P(p));
 }
-void _init_guile(basic_block_t *t)
+void _call_guile_cfg(basic_block_t *t){
+
+	scm_c_define("entry_block", scm_from_pointer(t, NULL));
+	scm_call_0( scm_variable_ref(scm_c_lookup("block_func") ));
+}
+void _call_guile_ssa(basic_block_t *t){
+	
+	scm_call_0( scm_variable_ref(scm_c_lookup("hook_ssa")));
+}
+void _init_guile(void)
 {
 	scm_init_guile();
 	scm_c_define_gsubr("block-stmts", 1, 0, 0, (scm_t_subr)&block_stmts);
@@ -149,6 +158,4 @@ void _init_guile(basic_block_t *t)
 	scm_c_define_gsubr("expand-expr", 1, 0, 0, (scm_t_subr)expand_expr);
 	scm_c_define_gsubr("expr?", 1, 0, 0, (scm_t_subr)exprp);
 	scm_c_primitive_load("script.scm");
-	scm_c_define("entry_block", scm_from_pointer(t, NULL));
-	scm_call_0( scm_variable_ref(scm_c_lookup("block_func") ));
 }

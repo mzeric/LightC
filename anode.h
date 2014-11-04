@@ -176,10 +176,13 @@ public:
 };
 class anode_int_cst : public anode_node {
 public:
-	anode_int_cst(int cst):int_cst(cst){
+	anode_int_cst(size_t cst):int_cst(cst){
 		code = INTEGER_CST;
 	}
-	int 	int_cst;
+	size_t 	int_cst;
+    size_t cst(void){
+        return int_cst;
+    }
 };
 class anode_string_cst : public anode_node{
 public:
@@ -205,7 +208,12 @@ public:
         anode purpose;
         anode value;
 };
+/*
+    MUST SINGLTON
+*/
 class anode_type : public anode_node {
+public:
+    //static type_table[]
 public:
 	anode_type(int c){
 		code = c;
@@ -485,6 +493,11 @@ typedef struct basic_block_s{
         stmt_live_t             *stmt_live;
 
 }basic_block_t,bb_t, *bb;
+#define BB_STMT_BEGIN(b) (b)->entry
+#define BB_STMT_END(b) (b)->exit;
+#define BB_STMT_NEXT(s) ANODE_CHAIN((s))
+
+#define FOR_EACH_STMT_OF_BB(s, b)  for (anode t = BB_STMT_BEGIN(b); t,ANODE_VALUE(t); t = BB_STMT_NEXT((s)))
 
 typedef struct edge_s{
 
@@ -549,6 +562,7 @@ void print_decl(anode l);
 anode build_func_decl(anode declar, anode params);
 anode build_decl(enum anode_code, anode speci, anode declar);
 anode build_parm_decl(anode a, anode b);
+anode build_addr_expr(anode expr);
 
 
 

@@ -60,18 +60,6 @@ extern "C" void check(const char *msg, ...){
     anode		ast_qual;
     anode 		ast_expr_list;
     anode 		ast_list;
-/*
-    ASTType		*ast_type;
-    QualType	*ast_qual;
-    StorType	*ast_stor;
-    AST_expr_list    *ast_expr_list;
-    AST_decl 	*ast_decl;
-    AST_declarator *ast_declarator;
-    Declaration *ast_declaration;
-    AST_args    *ast_args;
-    AST_func	*ast_func;  //func definition
-*/
-    
     
 }
 %token CONSTANT SIZEOF
@@ -213,19 +201,17 @@ primary_expression /* operand of a expression */
 		/*  should be a ref */
 		free($1);
 		//引用了一个变量(局部),
-		//此处是往AST里加入一个变量引用节点
+
 	}
 	| CONSTANT_INT {
 		check("CONSTANT_INT %d", $1);
 		$$ = new anode_int_cst($1);
 
-		//printf("%X ",atoi(yytext));
 	}
 	| STRING_LITERAL{
 		check("literal");
 		$$ = new anode_string_cst($1);
-		//$$ = new AST_literal($1);
-		//delete $1; /* free the lexer's std::string* */
+		free($1);
 	}
 	| '(' expression ')'{
 		check("括号");

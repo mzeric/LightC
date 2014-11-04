@@ -8,7 +8,10 @@ int func(void){
 	if(d > 2){
 		int f1;
 		int d;
-		if(1){f1 = 3;d=1;}
+		if(1){
+			f1 = 3;
+			d=1;
+		}
 		f1 = 4;
 		f1 = f1 + d;
 	}else{

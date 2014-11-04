@@ -94,6 +94,9 @@ L?'(\\.|[^\\'\n])+'     { count(); return(CONSTANT); }
 0[xX]{H}*"."{H}+({P})?{FS}?     { count(); return(CONSTANT); }
 0[xX]{H}+"."{H}*({P})?{FS}?     { count(); return(CONSTANT); }
 
+L?\"(\\.|[^\\"\n])*\" 	{ count();
+				yylval.id = strdup(yytext);
+				return(STRING_LITERAL); }
 
 
 "..."                   { count(); return(ELLIPSIS); }

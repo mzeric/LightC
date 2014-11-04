@@ -90,6 +90,8 @@ DEFTREECODE (FIELD_DECL, "field_decl", 'd', 0)
 DEFTREECODE (TRANSLATION_UNIT_DECL, "translation_unit_decl", 'd', 0)
 /* C unary `*' 解引用.  One operand, an expression for a pointer.  */
 DEFTREECODE (INDIRECT_REF, "indirect_ref", 'r', 1)
+/* MEM_REF[ptr, offset] */
+DEFTREECODE (MEM_REF, "mem_ref", 'r', 2)
 /* 数组的访问. Operand 0 是数组; operand 1 是下标 */
 DEFTREECODE (ARRAY_REF, "array_ref", 'r', 2)
 
