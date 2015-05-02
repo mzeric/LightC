@@ -5,11 +5,14 @@
                 Data Flow Analysis, compute the def-use,liveness, etc
 
     two space : syntax lex space, cfg flow space, latter matters more here
+    无法具体测试整个后端的效率，但可以估计的是大量的时间会消耗在dfa具体的技术上，尤其是基础信息的计算优化
 */
 #include <stdio.h>
 #include <stdlib.h>
 #include <algorithm>
 #include <vector>
+#include <list>
+#include <map>
 
 #include "dfa.h"
 #include "anode.h"
@@ -278,6 +281,192 @@ void compute_bb_gen_kill(basic_block_t *start, basic_block_t *end){
 
     }
 }
+#define _FOR_EACH_BB(b, start, end) for (basic_block_t *(b) = (start); (b) != (end); (b) = (b)->next)
+#define FOR_EACH_BB(b, start) _FOR_EACH_BB(b, start, EXIT_BLOCK_PTR)
+typedef std::set<basic_block_t*> iter_block_t;
+
+typedef std::list<basic_block_t*> list_t;
+static int postorder = 0;
+std::map<basic_block_t*, int> doms_post;
+void visit(basic_block_t *node, list_t& l){
+
+    for (edge e = node->succ; e; e = e->succ_next){
+        visit(node, l);
+    }
+
+    l.insert(l.begin(), node);
+    doms_post[node] = postorder++;
+}
+
+void get_reverse_postorder(basic_block_t *start, list_t &l){
+    visit(start, l);
+}
+std::map<basic_block_t*, basic_block_t*> doms;
+
+basic_block_t *intersect(basic_block_t *a, basic_block_t *b){
+
+    int ap,bp;
+    ap = doms_post[a];
+    bp = doms_post[b];
+
+
+    while (ap != bp){
+        while(ap < bp){
+            a = doms[a];
+            ap = doms_post[a];
+        }
+        while(ap > bp){
+            b = doms[b];
+            bp = doms_post[b];
+        }
+    }
+
+    return a;
+}
+std::map<basic_block_t*, std::list<basic_block_t*> >doms_childs;
+void doms_to_tree(){
+    basic_block_t *doms_root = (basic_block_t*)malloc(sizeof(basic_block_t));
+    typedef std::map<basic_block_t*, basic_block_t*> doms_t;
+    for (doms_t::iterator iter = doms.begin(); iter != doms.end(); ++iter){
+        basic_block_t *k = iter->first;
+        basic_block_t *p = iter->second;
+        while(p){
+            doms_childs[p].push_back(k);
+            k = p;
+            p = doms[p];
+        }
+    }
+
+}
+void compute_cfg_dom(basic_block_t *start){
+    bool changed = true;
+    list_t rp;
+    get_reverse_postorder(start, rp);
+    /* remove the start node */
+    FOR_EACH_BB(b, start){
+        doms[b] = NULL;
+    }
+
+    doms[start] = start;
+    changed = true;
+
+    while(changed){
+        changed = false;
+        list_t::iterator iter;
+        for (iter = rp.begin(); iter != rp.end(); ++iter){
+            basic_block_t *new_idom = (*iter)->pred->src;
+            for (edge e = (*iter)->pred->pred_next; e; e = e->pred_next){
+                if (doms[e->src] != NULL)
+                    new_idom = intersect(e->src, new_idom);
+            }
+            if (doms[*iter] != new_idom){
+                doms[*iter] = new_idom;
+                changed = true;
+            }
+
+        }
+    }
+
+    doms_to_tree();
+
+}
+/* compute ssa.defs & ssa.uses info 
+
+    ssa_defs[VAR_DECL] = list_t<anode>
+    ssa_uses[VAR_DECL] = list_t<pair<anode, int> >
+
+*/
+typedef std::map<anode, std::list<anode> > ssa_defs_t;
+typedef std::map<anode, std::list<pair<anode, int> > > ssa_uses_t;
+typedef std::set<pair<anode, int> > uses_set_t;
+
+void get_all_var_pair(anode expr, int index, bb b, uses_set_t &var, live_set_t &r_def){
+        /* some expr in cfg left NULL intendely as ir_branch(cond, NULL, NULL) */
+        anode old_expr = expr;
+        if (index >= 0)
+            expr = ANODE_OPERAND(expr, index);
+
+
+        if (!expr)
+            return;
+
+        if (expr == &undefine_variable){
+            printf("\tundefine_variable\n");
+            return;
+        }
+        printf("\tGET_ALL_VAR %s\n", anode_code_name(anode_code(expr)));
+        if (anode_code(expr) == IDENTIFIER_NODE){
+            printf("id:%s\n",IDENTIFIER_POINTER(decl_name(expr)));
+            
+        }
+
+        int len = anode_code_length(anode_code(expr));
+
+           
+        if (anode_code_class(anode_code(expr)) == 'c'){
+            return;
+        }
+
+        if (anode_code(expr) == IR_SSA_NAME || anode_code(expr) == IR_PHI){
+            var.insert(pair<anode, int>(old_expr, index));
+            return;
+        }
+        if (len == 0)
+            return;
+        if (anode_code(expr) == MODIFY_EXPR){
+            printf("%s\n", anode_code_name(anode_code(ANODE_OPERAND(expr, 0))));
+            r_def.insert(ANODE_OPERAND(expr, 0));
+            get_all_var_pair(expr, 1, b, var, r_def);
+
+        }else if (EXPR_P(expr)){
+            for (int i = 0; i < len; ++i){
+                get_all_var_pair(expr, i, b, var, r_def);
+            }
+
+        }
+
+
+}
+/*
+    v.defs could in anode->ssa_defs
+    v.uses could in anode->ssa_uses
+*/
+int compute_ssa_defs_uses(basic_block_t *start, basic_block_t *end){
+    ssa_defs_t ssa_defs;
+    ssa_uses_t ssa_uses;
+
+    _FOR_EACH_BB(b, start, end){
+        uses_set_t s_uses;
+        live_set_t s_defs;
+
+        for (anode stmt_list = b->entry; stmt_list; stmt_list = ANODE_CHAIN(stmt_list)){
+            anode stmt = ANODE_VALUE(stmt_list);
+
+            get_all_var_pair(stmt, -1, b, s_uses, s_defs);
+        }
+        
+        for(live_set_t::iterator iter = s_defs.begin(); iter != s_defs.end(); ++iter){
+                anode_ssa_name *def= (anode_ssa_name*)*iter;
+                assert(anode_code(def) == IR_SSA_NAME || anode_code(def) == IR_PHI);
+                
+                /* work so, just follow order inside one block */
+                ssa_defs[def->var].push_back(def);
+        }
+
+        for(uses_set_t::iterator iter = s_uses.begin(); iter != s_uses.end(); ++iter){
+                anode expr = iter->first;
+                int i = iter->second;
+                anode_ssa_name *u = (anode_ssa_name*)&ANODE_OPERAND(expr, i);
+                ssa_uses[u->var].push_back(*iter);
+                
+        }
+    }
+    /* now fill the ssa_defs_t & ssa_uses_t */
+    
+
+}
+
+
 /* calc the define-rechable in/out of bb */
 
 /* cals the live-variable info of bb */

@@ -32,12 +32,15 @@ int main(){
 	printf("after all\n");
 	//dump_block_list(top_ast_node, 0);
 	build_func_cfg(top_ast_node);//, ENTRY_BLOCK_PTR, ENTRY_BLOCK_PTR, "start");
-	_call_guile_cfg(ENTRY_BLOCK_PTR->next);
+	//_call_guile_cfg(ENTRY_BLOCK_PTR->next);
 	simplify_bb(ENTRY_BLOCK_PTR->next);
 	//make_edge(get_bb(ENTRY_BLOCK_PTR, 8), get_bb(ENTRY_BLOCK_PTR, 6), 0);
 	lower_bb(ENTRY_BLOCK_PTR->next);
+
+	_call_lua_cfg(ENTRY_BLOCK_PTR);
+
 	build_ssa(ENTRY_BLOCK_PTR->next);
-	_call_guile_ssa(ENTRY_BLOCK_PTR->next);
+	//_call_guile_ssa(ENTRY_BLOCK_PTR->next);
 	dfa_handle(ENTRY_BLOCK_PTR->next);
 
 	//dump_bb(ENTRY_BLOCK_PTR);

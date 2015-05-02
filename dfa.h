@@ -24,6 +24,9 @@ struct live_ness_t{
 };
 extern anode_node undefine_variable;
 extern anode_node uninitial_variable;
+
+void get_all_var(anode expr, basic_block_t *b, live_set_t &var, live_set_t &r_def);
+
 void dfa_handle(basic_block_t *b);
 
 

@@ -1,8 +1,10 @@
 int func(){
 
 	int d;
+	int c;
 
 	d = 1;
+	c = 3;
 
 	if (d > 1){
 		d = d;
@@ -14,6 +16,6 @@ int func(){
 	}
 
 	int f;
-	f = d;
+	f = d + c;
 
 }

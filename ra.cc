@@ -16,6 +16,8 @@ need : dom-tree
 
 int k_press = 0;
 #define MAX_NEXTUSE 0xffffff
+extern void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def);
+
 /**********************
 
 nextuse will NOT cross basic-block, so, if, just random pick one
@@ -48,7 +50,7 @@ void displace(Set &Q, anode stmt, Set &V, Set &X, bool spill){
         std::set_difference(V.begin(), V.end(),Q.begin(), Q.end(),
                 std::inserter(R, R.begin()));
         X.clear();
-        int max = R.size() + Q.size() - k_press;
+         int max = R.size() + Q.size() - k_press;
         if (max < 0 )
                 max = 0;
         for (int i = 0; i < max; ++i){
@@ -63,8 +65,12 @@ void displace(Set &Q, anode stmt, Set &V, Set &X, bool spill){
                 }
              }
              X.insert(w);
-             /* insert IR_SPILL */
-             Q.erase(w);
+             
+             Q.erase(w); 
+             /* 
+                if w not in Q. w must in V. but all in V is ZERO of next-use
+                so. w must be in Q, and Must STORE it
+             */
         }
         /* Q = Q + V */
         Q.insert(V.begin(), V.end());
@@ -81,22 +87,47 @@ void bleady_block(basic_block_t *block){
 
         for (anode stmt = block->entry; stmt; stmt = ANODE_CHAIN(stmt)){
 
-                Set X;Set V;
+                Set X;
+                Set V;
+                Set df;
+                /* FIXME liveness of V , have here */
+                get_all_var(stmt, block, V, df);
+
+
+/* insert IR_RELOAD, after insert all ness IR_STORE */
+   
                 displace(Q, stmt, V, X, true);
-
-                /* insert IR_RELOAD, after insert all ness IR_SPILL */
-
+/* insert IR_STORE before label */
                 for (Set::iterator iter = U.begin(); iter != U.end(); ++iter)
                         X.erase(*iter);
                 for (Set::iterator iter = X.begin(); iter != X.end(); ++iter)
                         in_b.erase(*iter);
-                Set df;
+
                 U.insert(V.begin(), V.end());
-                displace(Q, stmt, df, X, false);
+                anode stmt2 = ANODE_CHAIN(stmt);
+                displace(Q, stmt2, df, X, false);
+/* insert IR_STORE before label */
 
         }
 
         block->live->r_in = in_b;
         block->live->r_out = Q;
+
+}
+#define FOR_EACH_BB(b, start) for (basic_block_t *(b) = (start); (b) != EXIT_BLOCK_PTR; (b) = (b)->next)
+#define FOR_EACH_PRED(e, block) for (edge (e) = (block)->pred; (e); (e) = (e)->pred_next)
+#define EDGE_PRED_BLOCK(e) (e)->src
+void spill_belady(basic_block_t *start, int k){
+    FOR_EACH_BB(b, start){
+        bleady_block(b);
+    }
+    FOR_EACH_PRED(e, start){
+        basic_block_t *b = EDGE_PRED_BLOCK(e);
+        //FIXME
+        /* insert RELOAD on Edges for all in(b) - out(p) */
+    }
+
+}
+void color_roution(basic_block_t *start){
 
 }
