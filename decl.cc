@@ -132,6 +132,7 @@ anode build_stmt(int code, ...){
         }
 
         va_end(vp);
+	t->decl_outer = current_declspaces;
         return t;
 }
 

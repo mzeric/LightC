@@ -481,6 +481,7 @@ declaration
 		/* 从 decl_specifiers里提取type_specifier */
 		/* DECL_STMT may contain only one or many VAR_DECLs */
 		$$ = build_stmt(DECL_STMT, ANODE_VALUE($2));
+		$$->decl_outer = current_declspaces;
 
 
 	} //完整声明 包含变量名 或 初值 、类型
