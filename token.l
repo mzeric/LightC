@@ -6,6 +6,8 @@ P                       [Pp][+-]?{D}+
 FS                      (f|F|l|L)
 IS                      ((u|U)|(u|U)?(l|L|ll|LL)|(l|L|ll|LL)(u|U))
 
+%option yylineno
+
 %{
 #include <stdio.h>
 #include <iostream>
@@ -19,6 +21,10 @@ IS                      ((u|U)|(u|U)?(l|L|ll|LL)|(l|L|ll|LL)(u|U))
 void count(void);
 void comment(void);
 int column = 0;
+int line = 1;
+#define LINE_LEN 1024
+char line_buf[LINE_LEN+1];
+int line_len = 0;
 
 %}
 
@@ -161,10 +167,13 @@ L?\"(\\.|[^\\"\n])*\" 	{ count();
 #define LEX_INPUT input
 #endif
 extern int yyinput();
-void yyerror(char const *s)
+extern "C" void yyerror(char const *s)
 {
-        fflush(stdout);
-        printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
+	fflush(stdout);
+	printf("Error: %s\n", s);
+	int c = printf("%d:%d ", yylineno, column);
+	printf("%s\n", line_buf);
+	printf("%*s\n",column , "^");
 }
 int yywrap(){
         return 1;
@@ -173,13 +182,24 @@ void count(void)
 {
         int i;
 
-        for (i = 0; yytext[i] != '\0'; i++)
-                if (yytext[i] == '\n')
+        for (i = 0; yytext[i] != '\0'; i++){
+                if (yytext[i] == '\n'){
                         column = 0;
-                else if (yytext[i] == '\t')
+			line++;
+			line_len = 0;
+			line_buf[line_len] = 0;
+                }
+                else if (yytext[i] == '\t'){
                         column += 8 - (column % 8);
-                else
+                        line_buf[line_len++] = yytext[i];
+                }
+                else{
                         column++;
+                        line_buf[line_len++] = yytext[i];
+                }
+
+        }
+        line_buf[line_len] = 0;
 #ifdef LVC_DEBUG
         ECHO;
 #endif
