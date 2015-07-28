@@ -9,7 +9,7 @@
 using namespace std;
 struct basic_block_s entry_exit_blocks[2];
 
-static unsigned global_bb_index = 0;
+static unsigned global_bb_index = 1;
 static unsigned global_label_index = 0;
 
 struct basic_block_s *current_bb;
@@ -101,14 +101,14 @@ void bb_add_stmt(basic_block_t *b, anode s){
 	anode last = build_list(NULL, s);
 
 	b->entry = chain_cat(b->entry, last);
-	b->exit = last;
+	//b->exit = last;
 	s->basic_block = b;
 }
 /*
 	head is the first stmt of bb
 */
 void init_bb(basic_block_t*b, basic_block_t *ahead){
-	b->exit = b->entry;
+	//b->exit = b->entry;
 	if(ahead)
 		ahead->next = b;
 	b->prev = ahead;
@@ -357,9 +357,9 @@ void dump_bb(basic_block_t *start_bb){
 		for (anode p = b->phi; p; p = p->chain){
 			anode_phi *phi = (anode_phi*)p;
 			printf("\tphi %x :\t", p);
-			for (anode t = ((anode_phi*)p)->targets; t; t = t->chain){
+			for (auto t : ((anode_phi*)p)->targets){
 //				printf(" %x", ANODE_VALUE(t));
-				print_var(ANODE_VALUE(t));
+				print_var(t);
 			}
 			printf("\n");
 			printf("\tusers: ");
@@ -612,8 +612,7 @@ anode read_variable(anode id, basic_block_t *b){
 anode remove_trivial_phi(anode p){
 	anode_phi *phi = (anode_phi*)p;
 	anode same = NULL;
-	for (anode t = phi->targets; t; t = ANODE_CHAIN(t)){
-		anode v = ANODE_VALUE(t);
+	for (auto v : phi->targets){
 		if (v == same || v == phi)
 			continue;
 		if (same != NULL)
@@ -653,7 +652,7 @@ anode add_phi_operands(anode id, anode& phi_node){
 
 		anode tt = read_variable(id, b);
 
-		phi->append_operand(tt, e);
+		//phi->append_operand(tt, e);
 	}
 	return simplify_phi(phi);
 }

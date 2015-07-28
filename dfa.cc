@@ -65,7 +65,7 @@ void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def){
             printf("\tundefine_variable\n");
             return;
         }
-        printf("\tGET_ALL_VAR %s\n", anode_code_name(anode_code(expr)));
+        //printf("\tGET_ALL_VAR %s\n", anode_code_name(anode_code(expr)));
         if (anode_code(expr) == IDENTIFIER_NODE){
             printf("id:%s\n",IDENTIFIER_POINTER(decl_name(expr)));
             
@@ -85,7 +85,7 @@ void get_all_var(anode expr, bb b, live_set_t &var, live_set_t &r_def){
         if (len == 0)
             return;
         if (anode_code(expr) == MODIFY_EXPR){
-            printf("%s\n", anode_code_name(anode_code(ANODE_OPERAND(expr, 0))));
+            //printf("%s\n", anode_code_name(anode_code(ANODE_OPERAND(expr, 0))));
             r_def.insert(ANODE_OPERAND(expr, 0));
             get_all_var(ANODE_OPERAND(expr, 1), b, var, r_def);
 
@@ -119,8 +119,8 @@ void build_bb_use_def(basic_block_t *b) {
         if (anode_code(iter->second) == IR_PHI){
 
             anode_phi *phi = (anode_phi*)iter->second;
-            for (anode t = phi->targets; t; t = ANODE_CHAIN(t)){
-                b->live->phi_use.insert(ANODE_VALUE(t));
+            for (auto t : phi->targets){
+                b->live->phi_use.insert(t);
 
             }
             b->live->phi_def.insert(iter->first);

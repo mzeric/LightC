@@ -8,6 +8,7 @@ int func(){
 
 	if (d > 1){
 		d = d;
+		c = 3;
 
 	}else{
 		d = 4;
@@ -17,5 +18,6 @@ int func(){
 
 	int f;
 	f = d + c;
+	f = 2;
 
 }

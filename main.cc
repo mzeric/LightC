@@ -11,7 +11,7 @@
 extern int yydebug;
 extern char *yytext;
 extern int yyleng;
-
+extern void build_ssa_legacy(basic_block_t *p);
 int main(){
 	int i;	
 	/*
@@ -38,10 +38,10 @@ int main(){
 	lower_bb(ENTRY_BLOCK_PTR->next);
 
 	_call_lua_cfg(ENTRY_BLOCK_PTR);
-
-	build_ssa(ENTRY_BLOCK_PTR->next);
+	build_ssa_legacy(ENTRY_BLOCK_PTR);
+	//build_ssa(ENTRY_BLOCK_PTR);
 	//_call_guile_ssa(ENTRY_BLOCK_PTR->next);
-	dfa_handle(ENTRY_BLOCK_PTR->next);
+	//dfa_handle(ENTRY_BLOCK_PTR->next);
 
 	//dump_bb(ENTRY_BLOCK_PTR);
 

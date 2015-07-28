@@ -433,16 +433,86 @@ enum lower_status lower_stmt(anode *expr_p, anode_seq *pre_p){
 enum lower_status lower_and_add(anode expr_p, anode_seq *pre_p){
         lower_stmt(&expr_p, pre_p);
 }
+void build_IR(int ir_code, ...){
+
+
+
+}
+
+void get_rhs(anode expr, anode *pred){
+	
+	if (1/* all val   */){
+		build_list(NULL, NULL);
+
+	}
+
+}
+void lower_expr_s(anode stmt, anode *pred);
+
+void lower_modify_expr(anode stmt, anode *prev_stmt){
+	anode expr = ANODE_VALUE(stmt);
+
+	assert(anode_code(expr) == MODIFY_EXPR);
+
+	anode lhs = ANODE_OPERAND(expr, 0);
+	anode rhs = ANODE_OPERAND(expr, 1);
+	//assert(is_ir_rhs_or_call(rhs));
+	int op_len = anode_code_length(anode_code(rhs));
+	int c = anode_code_class(anode_code(rhs));
+
+	printf("lower ___________________ %d,%d %s(%c, %d)\n",is_ir_val(rhs),is_ir_rhs_or_call(rhs), anode_code_name(anode_code(rhs)), c, op_len);
+	printf("lhs:  %s -> %s\n",anode_code_name(anode_code(lhs)), IDENTIFIER_POINTER(decl_name(lhs)));
+
+	if (is_ir_val(rhs)){
+		printf("get var_decl:%s\n", IDENTIFIER_POINTER(decl_name(lhs)));
+//		anode p = build_ir_len(
+	}
+	printf("is val %d\n", is_ir_val(rhs));
+
+	//build_IR(IR_ASSIGN, lhs, anode_code(rhs));
+
+}
+void lower_expr_s(anode stmt, anode *pred){
+	
+	if (anode_code(ANODE_VALUE(stmt)) == MODIFY_EXPR)
+		lower_modify_expr( stmt, pred);
+	
+
+
+}
+/*
+ * Actually need the Lineraier Algorithm
+ * 
+ * */
+void lineraizer(basic_block_t *block){
+
+	anode stmt = block->entry;
+
+	anode expr = ANODE_VALUE(stmt);
+	for( ; stmt; stmt = ANODE_CHAIN(stmt)){
+
+
+	}
+
+
+}
 
 
 
 /*
         the key is lower_expr
 */
-void lower_block(anode *ast_expr, anode_seq *ret_seq){
-    anode expr;
-    for (expr = *ast_expr; expr; expr = ANODE_CHAIN(expr)){
+void lower_block(basic_block_t *block, anode_seq *ret_seq){
+    anode ast_expr = block->entry;
+    anode expr, *prev = &(block->entry);
+
+    for (expr = ast_expr, prev = NULL; expr; expr = ANODE_CHAIN(expr)){
+
+    	if (anode_code(ANODE_VALUE(expr)) == MODIFY_EXPR)
+    		lower_modify_expr(expr, prev);
+
         lower_stmt(&ANODE_VALUE(expr), ret_seq);
+        prev = &expr;
     }
 
 }
@@ -450,7 +520,7 @@ void lower_bb(basic_block_t *b){
     basic_block_t *t;
     for (t = b; t != EXIT_BLOCK_PTR; t = t->next) {
         anode_seq ret = NULL;
-        lower_block(&t->entry, &ret);
+        lower_block(t, &ret);
         t->lower_ir = ret;
     }
 }

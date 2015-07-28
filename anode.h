@@ -9,6 +9,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <list>
 #include <map>
 
 
@@ -375,6 +376,19 @@ public:
         anode fragment_chain;
 };
 typedef struct edge_s *edge;
+class  use_t{
+public:
+    use_t():expr(NULL),op_index(-1){}
+    use_t(anode u, int op, bool isp):expr(u), op_index(op), is_phi(isp){}
+    anode expr; /* expr or phi-expr(anode_phi*) */
+    int  op_index;/* index of the expr's operand */
+    anode *tmp; /* tmp for normal expr */
+    bool is_phi;
+    struct basic_block_s *pred_block; /* block of pred for phi */
+    struct basic_block_s *block;
+};
+
+
 class anode_ssa_name : public anode_node {
 public:
         anode_ssa_name(){code = IR_SSA_NAME;}
@@ -382,6 +396,7 @@ public:
             var     = id;
             code    = IR_SSA_NAME;
             phi     = NULL;
+            def_stmt = NULL;
 
         }
         void set_phi(anode p){
@@ -389,10 +404,12 @@ public:
         }
 
         bool is_phi(){return phi;}
+        void add_user(anode u, int op, bool isp){ulist.push_back(use_t(u, op, isp));}
+        void add_user(use_t t){ulist.push_back(t);}
 
         anode var; /* NULL means phi node */
         anode def_stmt;
-        std::set<anode> ulist;
+        std::list<use_t> ulist;/* 所有用到这个stmt的 stmt*/
         anode phi;
 
 };
@@ -451,6 +468,7 @@ anode build_var_decl(anode specifier, anode declarator);
 anode anode_cons(anode purpose, anode node, anode chain);
 void c_parse_init(void);
 anode build_stmt(int code, ...);
+anode build_ir_len(int code, int len, ...);
 void    push_namespace (void);
 void    pop_namespace (void);
 void    push_decl(anode decl);
@@ -510,18 +528,13 @@ typedef struct edge_s{
 class anode_phi : public anode_node {
 public:
         anode_phi(basic_block_t *b):block(b){
-            targets = NULL;
+
             this->chain = b->phi;
             b->phi = (anode)this;
             code = IR_PHI;
 
         }
-        void append_operand(anode n, edge e){/* append to order by pred-edge; must be list 4 same value issue */
-            anode l = build_list(NULL, n);
-            targets = chain_cat(targets, l);
-            l->chain = NULL;
-            (*(block->phi_edge))[n] = e;
-        }
+        
 
         void replace_by(anode new_v){
             std::set<anode*>::iterator iter;
@@ -534,8 +547,10 @@ public:
             
         }
 public:
+
         basic_block_t   *block;
-        anode           targets;
+        anode_ssa_name  *def_name;
+        vector<anode>    targets;/* anode_list for NULL phi operand before rename */
 
 };
 inline void add_phi_user(anode phi, anode* u){
@@ -590,5 +605,36 @@ inline bb get_bb(bb b, int index){
 
 extern anode get_def(anode id, bb b);
 extern anode read_variable(anode id, bb b);
+
+/*
+inline anode get_use(use_t *u){
+    if(!u || !u->expr)
+        return NULL;
+
+    if(anode_code(u->expr) == IR_PHI)
+        return ((anode_phi*)u->expr)->targets[u->op_index];
+    if(EXPR_P(u->expr)){
+        return ANODE_OPERAND(u->expr, u->op_index);
+    }
+    char cc = anode_code_class(anode_code(u->expr));
+    if( cc == 'c' || cc == 'd'){
+        return u->expr;
+    }
+
+    return NULL;
+}
+inline void rewrite_use(use_t *u, anode value){
+    if(!u || !u->expr)
+        return;
+    if(anode_code(u->expr) == IR_PHI){
+
+    }
+    if(EXPR_P(u->expr)){
+        ANODE_OPERAND(u->expr, u->op_index) = value;
+        return;
+    }
+
+}
+*/
 
 #endif

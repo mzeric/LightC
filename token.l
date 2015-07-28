@@ -171,7 +171,7 @@ extern "C" void yyerror(char const *s)
 {
 	fflush(stdout);
 	printf("Error: %s\n", s);
-	int c = printf("%d:%d ", yylineno, column);
+	int c = printf("%d:%d: ", yylineno, column);
 	printf("%s\n", line_buf);
 	printf("%*s\n",column , "^");
 }

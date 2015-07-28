@@ -8,6 +8,7 @@ using namespace std;
 typedef struct anode_node *anode;
 typedef struct basic_block_s basic_block_t;
 typedef set<anode> live_set_t;
+typedef set<anode*> live_set_p_t;
 struct live_ness_t{
 
         live_set_t  gen;

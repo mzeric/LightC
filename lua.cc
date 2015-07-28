@@ -9,10 +9,15 @@
 #include "dfa.h"
 using namespace std;
 
-map<int, int> addr_to_int;
+map<int, basic_block_t*> index2addr;
+extern map<basic_block_t*, set<basic_block_t*> > ssa_DF;
+extern map<basic_block_t*, basic_block_t*> ssa_IDOM;
+extern map<basic_block_t*, vector<basic_block_t*> > ssa_D_Tree;
+
+extern map<anode, set<basic_block_t*> > var_phisite;
 int int_to_addr[1024];
 
-void bail(lua_State *L, char *msg){
+void bail(lua_State *L, const char *msg){
         fprintf(stderr, "\nFATAL ERROR:\n    %s: %s\n\n",
                 msg, lua_tostring(L, -1));
         exit(1);
@@ -82,10 +87,11 @@ void lua_create_table_cfg(lua_State *L, basic_block_t *entry){
         for(p; p != EXIT_BLOCK_PTR; p = p->next){
 		for(edge e = p->succ; e; e = e->succ_next){
 			basic_block_t *t = e->dst;
-                        int from = (p->index == 1 ? 0 : p->index);
-                        int to = (t->index == 1 ? 0 : t->index);
-                        if (from == 0 and to == 0) /* from 0 to 0 is wrong need FIXME */
-                                continue;
+                        int from = p->index;
+                        int to =  t->index;
+                        //printf("from %d(%p) -> %d(%p)\n", p->index, p, t->index, t);
+                        //if (from == 0 and to == 0) /* from 0 to 0 is wrong need FIXME */
+                         //       continue;
 			append_ft(L, from, to);
 		}
 	}
@@ -117,6 +123,66 @@ void _call_lua_cfg(basic_block_t *p){
         if(luaL_loadfile(L, "script.lua") || lua_pcall(L, 0, 0, 0)){
                 bail(L, "loadfile() or lua_pcall failed");
         }
+
+	for(basic_block_t*t = p; t != EXIT_BLOCK_PTR; t = t->next)
+		index2addr[t->index] = t;
+
+	/* fill ssa_DF */
+        lua_getglobal(L, "DF");
+        if (!lua_istable(L, -1))
+        	bail(L, "type(DF) mismatch");
+
+        lua_pushvalue(L, -1);
+        lua_pushnil(L);
+        while(lua_next(L, -2)){
+        	lua_pushvalue(L, -2);
+        	int node = lua_tointeger(L, -1);
+		printf("key %d \n", node);
+
+		/* read the DF[x] table */
+		lua_pushvalue(L, -2);
+		lua_pushnil(L);
+		while(lua_next(L, -2)){
+			lua_pushvalue(L, -2);
+			int d = lua_tointeger(L, -2);
+			printf("\t-> Frontier %d\n", d);
+			ssa_DF[index2addr[node]].insert(index2addr[d]);
+
+			lua_pop(L, 2);
+		}
+		lua_pop(L, 1);
+		/* end of DF[x] table */
+
+		lua_pop(L, 2);
+
+        }
+        lua_pop(L, 1);
+
+        /* fill PHI[] */
+         
+	   lua_getglobal(L, "IDOM");
+	   if (!lua_istable(L, -1))
+	       bail(L, "type(PHI) mismatch");
+       lua_pushvalue(L, -1);
+       lua_pushnil(L);
+       while(lua_next(L, -2)){
+            lua_pushvalue(L, -2);
+            int key = lua_tointeger(L, -1);
+            int idom_of_key = lua_tointeger(L, -2);
+//            printf("%d's idom = %d\n", key, idom_of_key);
+            ssa_IDOM[index2addr[key]] = index2addr[idom_of_key];
+            lua_pop(L, 2);
+       }
+       lua_pop(L, 1);
+
+       /* build D-Tree for ssa-cons */
+       for(auto it: ssa_IDOM){
+            ssa_D_Tree[it.second].push_back(it.first);
+        }
+	   
+
+
+
 
         lua_close(L);
 }

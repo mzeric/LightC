@@ -24,11 +24,11 @@ extern "C" int yylex(void);
 
 static int parameter_list_num = 0;
 anode top_ast_node;
-extern "C" void yyerror(char const *s)
-{
-	fflush(stdout);
-	printf("%d,\n%*s\n%*s\n",column, column, "^", column, s);
-}
+extern "C" void yyerror(char const *s);
+//{
+//	fflush(stdout);
+//	printf("%d,\n%*s\n%*s\n",line, column, "^", column, s);
+//}
 extern "C" void check(const char *msg, ...){
 	return;
 	va_list vp;
@@ -190,6 +190,10 @@ void c_parse_init(void){
 	push_namespace(); /* install the top-global namespace */
 
 }
+anode get_def_parse(anode id){
+
+
+}
 %}
 
 %%
@@ -197,8 +201,18 @@ void c_parse_init(void){
 primary_expression /* operand of a expression */
 	: IDENTIFIER {
 		check("(identifier %s)", $1);
-		$$ = new anode_identifier($1);
+		//$$ = new anode_identifier($1);
+		anode d = lookup_name($1);
+		if (d == NULL){
+			char *msg = NULL;
+			asprintf(&msg, "ref undefined var :%s\n", $1);
+			yyerror(msg);
+			exit(1);
+
+		}
+		$$ = d;
 		/*  should be a ref */
+		/* if undef yyerror("undef var :%s") */
 		free($1);
 		//引用了一个变量(局部),
 
@@ -480,7 +494,7 @@ declaration
 		}
 		/* 从 decl_specifiers里提取type_specifier */
 		/* DECL_STMT may contain only one or many VAR_DECLs */
-		$$ = build_stmt(DECL_STMT, ANODE_VALUE($2));
+		$$ = build_stmt(DECL_STMT, $2); /* ANODE_VALUE($2) == var_decl */
 		$$->decl_outer = current_declspaces;
 
 

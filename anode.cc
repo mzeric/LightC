@@ -173,6 +173,30 @@ anode chain_cat(anode a, anode b){
         ANODE_CHAIN(t) = b;
         return a;
 }
+anode chain_append_value(anode chain, anode value){
+	
+	anode list = build_list(NULL, value);
+	return chain_cat(chain, list);
+
+}
+
+void chain_insert_after(anode chain, anode value){
+	if (chain == NULL || value == NULL)
+		return;
+	anode list = build_list(NULL, value);
+	anode next_p = ANODE_CHAIN(chain);
+	ANODE_CHAIN(chain) = list;
+	ANODE_CHAIN(list) = next_p;
+
+}
+
+anode chain_cons(anode purpose, anode value, anode chain){
+        anode_list *l = new anode_list();
+        l->purpose = purpose;
+        ANODE_VALUE(l) = value;
+        ANODE_CHAIN(l) = chain;
+        return l;
+}
 anode anode_cons(anode purpose, anode value, anode chain){
         anode_list *l = new anode_list();
         l->purpose = purpose;
@@ -180,6 +204,7 @@ anode anode_cons(anode purpose, anode value, anode chain){
         ANODE_CHAIN(l) = chain;
         return l;
 }
+
 
 /* the redefine value stored in anode_list->purpose */
 

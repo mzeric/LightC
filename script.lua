@@ -306,12 +306,12 @@ for from, to in pairs(cfg) do
 	end
 end
 ]]
-
-it2 = DF_build(cfg)
+IDOM = idom_build(dom_build(cfg), cfg_nodes(cfg))
+DF = DF_build(cfg)
 --t = set_comm({6,2,3,4},{2,4,5,6})
 --t = {{1,2},3}
 print ("Dominance Frontier (D-F) is")
-for n,k in pairs(it2) do
+for n,k in pairs(DF) do
 	print ("node :" .. n)
 	for _,v in pairs(k) do
 		print (v)
@@ -327,14 +327,19 @@ function vars_live_out( block )
         lj;kl]]--
 end
 
-print (math.sin(2))
+function get_stmt( block )
+	-- get the stmt list of the block order by 
+end
+
 function defs_of_var( var )
 	-- all define sites of a var
 	-- stmts assign the var
+	return defsites_of_var_
 end
 function vars_need_phi( cfg )
 	-- all vars
 	-- vars live at exit of block
+	return vars_need_phi_
 end
 function table.length( t )
 	-- body
@@ -361,6 +366,7 @@ function place_phi( cfg )
         		for _,y in pairs(DF[n]) do
         			if not set_in(PHI[var], y) then
         				-- insert phi at top of block[y]
+        				print ("inset phi in block "..y.." for var: "..var)
         				table.insert(PHI[var],y) -- append
         				if not set_in(orig, y) then
         					table.insert(w, y)
@@ -369,6 +375,7 @@ function place_phi( cfg )
         		end
         	end
         end
+        return PHI
 
 end
 
@@ -377,5 +384,6 @@ function get_def_use( program )
 
 end
 
-
+--place_phi(cfg)
+--PHI = place_phi(cfg)
 

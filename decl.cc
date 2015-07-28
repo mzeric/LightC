@@ -135,6 +135,27 @@ anode build_stmt(int code, ...){
 	t->decl_outer = current_declspaces;
         return t;
 }
+/*
+ *
+ *  called by lower 
+ *
+ */
+anode build_ir_len(int code, int len, ...){
+        anode_expr    *t;
+        va_list       vp;
+        int           length;
+        int           i;
+        va_start(vp, len);
+        t = new anode_expr(code);
+
+        for (i = 0; i < len; i++){
+            ANODE_OPERAND (t, i) = va_arg(vp, anode);
+        }
+
+        va_end(vp);
+
+        return t;
+}
 
 
 anode get_last_stmt(anode tree){

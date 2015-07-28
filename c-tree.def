@@ -319,10 +319,13 @@ DEFTREECODE (CASE_LABEL, "case_label", 'e', 3)
 DEFTREECODE (STMT_EXPR, "stmt_expr", 'e', 1)
 DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
 
+/* assign (lhs, subcode, rhs1[,rhs2..] */
+DEFTREECODE (IR_ASSIGN, "ir_assign", 'e', 0)
 DEFTREECODE (IR_PHI, "ir_phi", 'e', 0)
 DEFTREECODE (IR_SSA_NAME, "ir_ssa_name", 'x', 0)
 DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 1)
 DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)
 DEFTREECODE (IR_NONE, "ir_none", 'n', 0)
+
 
 DEFTREECODE (WITH_SIZE_EXPR, "with_size_expr", 'e', 2)
