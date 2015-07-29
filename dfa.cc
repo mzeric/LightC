@@ -113,37 +113,35 @@ void build_bb_use_def(basic_block_t *b) {
 
     b->live->use.clear();
     b->live->def.clear();
-    for (ssa_table_t::iterator iter = b->ssa_table->begin(); iter != b->ssa_table->end(); ++iter){
 
-        assert(iter->first);
-        if (anode_code(iter->second) == IR_PHI){
-
-            anode_phi *phi = (anode_phi*)iter->second;
+    for (anode p = b->phi; p; p = ANODE_CHAIN(p)){
+            anode_phi *phi = (anode_phi*)p;
             for (auto t : phi->targets){
                 b->live->phi_use.insert(t);
 
             }
-            b->live->phi_def.insert(iter->first);
-        }
-        b->live->def.insert(iter->first);
+
+            b->live->phi_def.insert(phi->def_name);
+            b->live->def.insert(phi->def_name);
     }
+
     b->live->use = b->live->phi_use;
 
     for (anode stmt_list = b->entry; stmt_list; stmt_list = ANODE_CHAIN(stmt_list)){
         anode stmt = ANODE_VALUE(stmt_list);
         printf("dfa %d epxr: %s\n", b->index, anode_code_name(anode_code(stmt)));
-        live_ness_t *l = new live_ness_t();
-        ANODE_PURPOSE(stmt_list) = (anode)l;
+
 
         live_set_t l_use, l_def;
 
         get_all_var(stmt, b, l_use, l_def);
         /* phi is nor var */
-        (*b->stmt_live)[stmt] = l_use;
-        for (live_set_t::iterator iter = l_use.begin(); iter != l_use.end(); ++iter){
-                if (b->live->def.find(*iter) == b->live->def.end())
-                    b->live->use.insert(*iter);
+
+        for (auto it: l_use){
+                if (b->live->def.find(it) == b->live->def.end())
+                    b->live->use.insert(it);
         }
+
         b->live->def.insert(l_def.begin(), l_def.end());
 
     }
@@ -167,7 +165,9 @@ void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
         for (basic_block_t *b = start; b != end; b = b->next) {
             /* 
                 out(b) = phi_in(b->succ) || phi_in (b->succ) 
-                in(b) = use(b) || (out(b) - def(b))
+                ? ==>
+                out(b) = in(b->succ) || in(b->succ)
+                in(b) = use(b)_use_before_def || (out(b) - def(b))
             */
 
             live_set_t union_out;
@@ -178,15 +178,15 @@ void compute_bb_liveness(basic_block_t *start, basic_block_t *end){
                 live_set_t::iterator succ_iter;
                 live_ness_t *np = e->dst->live;
 
-                for (succ_iter = np->in.begin(); succ_iter != np->in.end(); ++succ_iter){
-                    assert(anode_code(*succ_iter) == IR_SSA_NAME);
+                for (auto it: np->in){
+                    assert(anode_code(it) == IR_SSA_NAME);
 
-                    edge be = (*e->dst->phi_edge)[(anode_ssa_name*)*succ_iter];
+/*                    edge be = (*e->dst->phi_edge)[(anode_ssa_name*)*succ_iter];
            
                     if (be && be->src != b)
                         continue;
-
-                    union_out.insert(*succ_iter);
+*/
+                    union_out.insert(it);
                     
 
                 }
@@ -229,24 +229,23 @@ void build_bb_kill(basic_block_t *b) {
         /* || OUT(pred(b)) - OUT(b) */
 }
 void kill_kill(live_set_t &old, live_set_t &def){
-
-    for (live_set_t::iterator iter = old.begin(); iter != old.end(); ++iter){
-        for (live_set_t::iterator def_iter = def.begin(); def_iter != def.end(); ++def_iter){
-            printf("kill is_ssa_name? %s\n", anode_code_name(anode_code(*iter)));
-            if ((*iter)->code == IR_SSA_NAME){
-                anode_ssa_name *a = (anode_ssa_name*)&(*iter);
-                anode_ssa_name *b = (anode_ssa_name*)&(*def_iter);
+    live_set_t tmp;
+    for (auto it : old){
+        for (auto def_it: def){
+            printf("kill is_ssa_name? %s\n", anode_code_name(anode_code(it)));
+            if (anode_code(it) == IR_SSA_NAME){
+                anode_ssa_name *a = (anode_ssa_name*)it;
+                anode_ssa_name *b = (anode_ssa_name*)def_it;
                 printf("kill %s -> %s\n", anode_code_name(anode_code(a)),
                         anode_code_name(anode_code(b)));
-                if (a->var == b->var ){
-                    assert (a->version < b->version);
-                    printf("kill kill\n");
-                    old.erase(iter);
+                if (a->var == b->var && a->version != b->version){
+                    /* not iterated */
+                    tmp.insert(it);
                 }
-            }        
-
+            }
         }
     }
+    old.erase(tmp.begin(), tmp.end());
 }
 void compute_stmt_live(bb_t *b){
     live_set_t start_live;
@@ -254,11 +253,11 @@ void compute_stmt_live(bb_t *b){
                 b->live->phi_use.begin(), b->live->phi_use.end(),
                 std::inserter(start_live, start_live.begin()));
     start_live.insert(b->live->phi_def.begin(), b->live->phi_def.end());
-    stmt_live_t stmt_live = *b->stmt_live;
+
     /*
         start_live = start_live + use
     */
-    live_set_t lp = b->live->in;
+    live_set_t lp = start_live;
     for (anode stmt = b->entry; stmt; stmt = ANODE_CHAIN(stmt)){
         live_set_t l_use, l_def;
 
