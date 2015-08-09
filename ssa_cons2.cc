@@ -441,6 +441,17 @@ void rebuild(anode_ssa_name *dup_ssa, anode_ssa_name *new_ssa){
         }while(all_idfs.size() !=  last);
         
 }
+
+/*
+    three-address code linear
+*/
+void code_3(basic_block_t *block){
+    block->ins.clear();
+    for(anode stmt = block->entry; stmt; stmt = ANODE_CHAIN(stmt)){
+
+    }
+}
+
 void build_ssa_legacy(basic_block_t *start){
         anode a;
         cout<<"undefine_variable is "<<&undefine_variable<<endl;
@@ -471,4 +482,8 @@ void build_ssa_legacy(basic_block_t *start){
                         printf("dd\n");
                 cout<<"hello "<<S[a].size()<<std::endl;
         }
+        for(basic_block_t *t = start; t != EXIT_BLOCK_PTR; t = t->next){
+                code_3(t);
+        }
+
 }

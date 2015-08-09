@@ -214,9 +214,28 @@ basic_block_t *build_compound_cfg(anode cp_stmt, basic_block_t *list, basic_bloc
 
 	return b;
 }
-basic_block_t *build_while_cfg(anode w_stmt, basic_block_t *list, basic_block_t *before){
+basic_block_t *build_while_cfg(anode while_stmt, basic_block_t *list, basic_block_t *before){
+	basic_block_t *cond_bb, *body_bb, *exit_bb;
 
-	return NULL;
+	anode while_cond = WHILE_COND(while_stmt);
+	anode while_body = WHILE_CLAUSE(while_stmt);
+
+	anode ir_br = build_stmt(IR_BRANCH, while_cond, NULL, NULL);
+	anode old_c = COMPOUND_DS_OUTER((anode_expr*)while_cond);
+
+	current_decl_context = old_c;
+	cond_bb = build_cfg(ir_br, list, before, "while_cond");
+	current_decl_context = old_c;
+
+	//FIXME shall we need the then_entry empty-bb
+	body_bb = build_cfg(while_body, cond_bb, cond_bb, "while body");
+
+	exit_bb = new_basic_block(NULL, body_bb, "while_exit");
+	make_edge(cond_bb, exit_bb, EDGE_PASSTHOUGH);
+
+	make_edge(body_bb, cond_bb, EDGE_PASSTHOUGH);
+
+	return exit_bb;/* would be elimitated */
 }
 basic_block_t *build_for_cfg(anode for_stmt, basic_block_t *list, basic_block_t *before){
 	return NULL;
@@ -244,7 +263,7 @@ basic_block_t *build_cfg(anode start_stmt, basic_block_t *list, basic_block_t *b
 			b = dst;
 			need_new = 0;
 		}
-
+ 
 		prev_stmt = stmt;
 		if(is_branch(stmt)){
 			switch(anode_code(stmt)){
@@ -252,6 +271,7 @@ basic_block_t *build_cfg(anode start_stmt, basic_block_t *list, basic_block_t *b
 					b = build_if_cfg(stmt, b, b);/* return if_exit */
 					break;
 				case WHILE_STMT:
+					b = build_while_cfg(stmt, b, b);
 					break;
 				case FOR_STMT:
 					break;
