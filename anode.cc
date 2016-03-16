@@ -6,6 +6,7 @@ static int next_type_uid = 1;
 //location_t input_location;
 
 anode anode_null = NULL;
+int anode_label::num = 0;
 
 int in_system_header = 0;
 #define DEFTREECODE(sym, name, type, length) name,

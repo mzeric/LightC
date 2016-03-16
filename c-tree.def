@@ -13,6 +13,7 @@
        but usually no interesting value.
    'e' for codes for other kinds of expressions.  
    'g' for codes for ir ins
+   'i' for codes for ir machine ins
 */  
 
 DEFTREECODE (IDENTIFIER_NODE, "identifier_node", 'x', 0)
@@ -323,9 +324,23 @@ DEFTREECODE (COMPOUND_LITERAL_EXPR, "compound_literal_expr", 'e', 1)
 DEFTREECODE (IR_ASSIGN, "ir_assign", 'e', 0)
 DEFTREECODE (IR_PHI, "ir_phi", 'e', 0)
 DEFTREECODE (IR_SSA_NAME, "ir_ssa_name", 'x', 0)
-DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 1)
+DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 3)
 DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)
-DEFTREECODE (IR_NONE, "ir_none", 'n', 0)
 
+DEFTREECODE (IRC_CMP, "ir_code_cmp", 'i', 2)
+DEFTREECODE (IRC_BRANCH, "ir_code_jmp", 'i', 3)
+DEFTREECODE (IRC_ASSIGN, "ir_code_mov", 'i', 2)
+
+DEFTREECODE (IRC_ADD, "ir_code_add", 'i', 2)
+DEFTREECODE (IRC_SUB, "ir_code_sub", 'i', 2)
+DEFTREECODE (IRC_MUL, "ir_code_mul", 'i', 2)
+DEFTREECODE (IRC_DIV, "ir_code_div", 'i', 2)
+DEFTREECODE (IRC_MOD, "ir_code_mod", 'i', 2)
+
+
+DEFTREECODE (IRC_MEM, "ir_code_mem", 'i', 1)
 
 DEFTREECODE (WITH_SIZE_EXPR, "with_size_expr", 'e', 2)
+
+
+

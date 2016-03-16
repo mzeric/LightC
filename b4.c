@@ -19,5 +19,6 @@ int func(){
 	int f;
 	f = d + c;
 	f = 2;
+	if(1){}
 
 }

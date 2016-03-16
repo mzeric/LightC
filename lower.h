@@ -27,6 +27,9 @@ typedef union ir_stmt_d * superir;
 
 typedef bool(*if_ir_t)(anode);
 
+anode create_tmp_var(anode var);/* name as T.xx */
+bool is_ins_rhs(anode t);/* suitable for the operand of one machine-ins */
+
 enum lower_status lower_expr(anode *expr, anode_seq *pre, anode_seq *post, if_ir_t, int how_);
 enum lower_status lower_and_add(anode expr_p, anode_seq *pre_p);
 enum lower_status lower_self_mod_expr(anode *expr_p, anode_seq *pre_p, anode_seq *post_p, int want);

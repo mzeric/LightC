@@ -143,6 +143,10 @@ public:
         type  = NULL;
         version = 0;
         users = new std::set<anode*>;
+        
+        is_reg = false;
+        addr = 0;
+        hint = NULL;
     }
 	virtual ~anode_node(){
 	}
@@ -156,6 +160,10 @@ public:
 
     std::set<anode*> *users;/* list */
     Set     def, use;
+
+    bool is_reg;
+    int addr;
+    anode hint;
 };
 
 typedef struct location_s{
@@ -339,6 +347,10 @@ public:
 
         int pointer_alias_set;
 
+        bool is_tmp;
+
+        anode_decl():is_tmp(false){}
+
 };
 
 
@@ -445,7 +457,12 @@ typedef std::map<anode_ssa_name*, anode, ssa_name_comparator> ssa_table_t;
 #define ANODE_OPERAND(NODE, I)      ANODE_OPERAND_CHECK(NODE, I)
 #define ANODE_OPERAND_P(NODE, I)    ANODE_OPERAND_P_CHECK(NODE, I)
 #define IF_STMT_CHECK(NODE)     ANODE_CHECK(NODE, IF_STMT)
+#define WHILE_STMT_CHECK(NODE)     ANODE_CHECK(NODE, WHILE_STMT)
+
 #define IF_COND(NODE)           ANODE_OPERAND (IF_STMT_CHECK (NODE), 0)
+#define WHILE_COND(NODE)           ANODE_OPERAND (WHILE_STMT_CHECK (NODE), 0)
+#define WHILE_CLAUSE(NODE)           ANODE_OPERAND (WHILE_STMT_CHECK (NODE), 1)
+
 #define THEN_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 1)
 #define ELSE_CLAUSE(NODE)       ANODE_OPERAND (IF_STMT_CHECK (NODE), 2)
 
@@ -489,6 +506,31 @@ enum edge_flag{
     EDGE_FALSE,
 };
 #include "dfa.h"
+class anode_label: public anode_node{
+public:
+    anode_label(const char *name){
+        {
+            char *buf =NULL;
+            if(name)
+                asprintf(&buf, "%s%d:", name,++num);
+            else
+                asprintf(&buf, "label_%d:", ++num);
+            
+            label = strdup(buf);
+            free(buf);
+        }
+        code = IR_LABEL;
+        num++;
+    }
+    char *label;
+    static int num;
+};
+class anode_ins: public anode_expr{
+public:
+    anode_ins(int c):anode_expr(c){
+
+    }
+};
 typedef std::map<anode, edge> phi_edge_t;
 typedef std::map<anode, live_set_t> stmt_live_t;
 typedef struct basic_block_s{
@@ -510,7 +552,10 @@ typedef struct basic_block_s{
         struct live_ness_t      *live;
         stmt_live_t             *stmt_live;
 
+        std::list<anode_ins*>        *ins;
+
 }basic_block_t,bb_t, *bb;
+
 #define BB_STMT_BEGIN(b) (b)->entry
 #define BB_STMT_END(b) (b)->exit;
 #define BB_STMT_NEXT(s) ANODE_CHAIN((s))

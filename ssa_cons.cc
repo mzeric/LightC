@@ -143,7 +143,13 @@ basic_block_t *bb_fork_after(anode *first, anode *after, basic_block_t *prev_bb)
 	//bb_split_after(first, after);
 	return new_basic_block(*first, prev_bb, NULL);
 }
+void bb_insert_first(basic_block_t *b, anode stmt){
+	anode last = build_list(NULL, stmt);
+	stmt->basic_block = b;
+	ANODE_CHAIN(last) = b->entry;
+	b->entry = last;
 
+}
 void bb_insert_last(basic_block_t *b, anode stmt){
 	bb_add_stmt(b, stmt);
 
@@ -165,7 +171,11 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 		so the IR_BRANCH only need ONE operand
 
 	*/
-	anode ir_br = build_stmt(IR_BRANCH, if_cond, NULL, NULL);
+	anode_label *true_label = new anode_label("if_true");
+	anode_label *false_label = new anode_label("if_false");
+
+
+	anode ir_br = build_stmt(IR_BRANCH, if_cond, true_label, false_label);
 	anode old_c = COMPOUND_DS_OUTER((anode_expr*)if_cond);
 
 	current_decl_context = old_c;
@@ -175,6 +185,7 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	//FIXME shall we need the then_entry empty-bb
 	then_bb = build_cfg(then_stmt, if_bb, if_bb, "then ");
 	if_bb->succ->flag = EDGE_TRUE;
+	bb_insert_first(then_bb, true_label);
 
 	else_bb = then_bb;
 	if(else_stmt){
@@ -185,10 +196,14 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	if_exit = new_basic_block(NULL, else_bb, "if_exit");
 
 	make_edge(then_bb, if_exit, EDGE_PASSTHOUGH);
-	if(else_stmt)
+	if(else_stmt){
 		make_edge(else_bb, if_exit, EDGE_PASSTHOUGH);
-	else
+		bb_insert_first(else_bb, false_label);
+	}else{
 		make_edge(if_bb, if_exit, EDGE_FALSE);
+		bb_add_stmt(if_exit, false_label);
+
+	}
 
 	return if_exit;
 
@@ -220,8 +235,13 @@ basic_block_t *build_while_cfg(anode while_stmt, basic_block_t *list, basic_bloc
 	anode while_cond = WHILE_COND(while_stmt);
 	anode while_body = WHILE_CLAUSE(while_stmt);
 
-	anode ir_br = build_stmt(IR_BRANCH, while_cond, NULL, NULL);
+	anode_label *while_exit_label = new anode_label("while_false");
+
+
+	anode ir_br = build_stmt(IR_BRANCH, while_cond, NULL, while_exit_label);
 	anode old_c = COMPOUND_DS_OUTER((anode_expr*)while_cond);
+
+
 
 	current_decl_context = old_c;
 	cond_bb = build_cfg(ir_br, list, before, "while_cond");
@@ -231,6 +251,8 @@ basic_block_t *build_while_cfg(anode while_stmt, basic_block_t *list, basic_bloc
 	body_bb = build_cfg(while_body, cond_bb, cond_bb, "while body");
 
 	exit_bb = new_basic_block(NULL, body_bb, "while_exit");
+	bb_add_stmt(exit_bb, while_exit_label);
+
 	make_edge(cond_bb, exit_bb, EDGE_PASSTHOUGH);
 
 	make_edge(body_bb, cond_bb, EDGE_PASSTHOUGH);

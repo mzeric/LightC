@@ -8,6 +8,7 @@
 #include "dfa.h"
 #include "lower.h"
 #include "script.h"
+#include "code.h"
 extern int yydebug;
 extern char *yytext;
 extern int yyleng;
@@ -39,6 +40,7 @@ int main(){
 
 	_call_lua_cfg(ENTRY_BLOCK_PTR);
 	build_ssa_legacy(ENTRY_BLOCK_PTR);
+	code_gen(ENTRY_BLOCK_PTR);
 	//build_ssa(ENTRY_BLOCK_PTR);
 	//_call_guile_ssa(ENTRY_BLOCK_PTR->next);
 	//dfa_handle(ENTRY_BLOCK_PTR->next);

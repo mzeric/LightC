@@ -76,6 +76,7 @@ bool is_ir_constant(anode t)
 }
 bool is_ir_live_memory(anode t){
     //if (ANODE_CODE(t) == )
+    return    false;
 }
 bool is_ir_reg(anode t)
 {
@@ -113,6 +114,7 @@ bool is_ir_stmt(anode t){
         return true;
 
     case CALL_EXPR:
+    case IR_BRANCH:
     case MODIFY_EXPR:
       /* These are valid regardless of their type.  */
       return true;
@@ -120,6 +122,9 @@ bool is_ir_stmt(anode t){
     default:
       return false;
     }
+}
+bool is_ins_rhs(anode t){
+    return (is_ir_id(t) || is_ir_constant(t));
 }
 /* ok to assign to some var
 */
@@ -160,7 +165,9 @@ anode create_tmp_var_raw(anode type, const char *prefix){
 */
 anode create_tmp_var(anode val){
         anode type = ANODE_TYPE(val);
-        anode var = create_tmp_var_raw(type, IDENTIFIER_POINTER(val));
+        if(anode_code(val) == IR_SSA_NAME)
+            val = ((anode_ssa_name*)val)->var;
+        anode var = create_tmp_var_raw(type, IDENTIFIER_POINTER(decl_name(val)));
         return var;
 }
 anode get_init_tmp_var(anode value, anode_seq *pre_p, anode_seq *post_p){
@@ -496,8 +503,14 @@ void lineraizer(basic_block_t *block){
 
 
 }
+void lower_add(anode expr, list<anode_ins*> &ins){
+    assert(anode_code(expr) == IR_ASSIGN);
+    assert(anode_code(ANODE_OPERAND(expr, 1)) == PLUS_EXPR);
+}
+void lower_branch(anode expr, list<anode_ins*> &ins){
+    assert(anode_code(expr) == IR_BRANCH);
 
-
+}
 
 /*
         the key is lower_expr
