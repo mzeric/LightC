@@ -235,23 +235,33 @@ basic_block_t *build_while_cfg(anode while_stmt, basic_block_t *list, basic_bloc
 	anode while_cond = WHILE_COND(while_stmt);
 	anode while_body = WHILE_CLAUSE(while_stmt);
 
-	anode_label *while_exit_label = new anode_label("while_false");
+	anode_label *label_while_exit = new anode_label("label_while_exit");
 
+	anode_label *label_while_cond = new anode_label("label_while_cond");
+	anode_label *label_while_body = new anode_label("label_while_body");
 
-	anode ir_br = build_stmt(IR_BRANCH, while_cond, NULL, while_exit_label);
+	anode ir_goto_cond = build_stmt(IR_GOTO, label_while_cond);
+	anode ir_jmp_body = build_stmt(IR_JUMP, while_cond, label_while_body);
+
+//	anode ir_br = build_stmt(IR_BRANCH, while_cond, NULL, label_while_exit);
+
 	anode old_c = COMPOUND_DS_OUTER((anode_expr*)while_cond);
 
 
+	body_bb = build_cfg(while_body, list, before, "while body");
 
 	current_decl_context = old_c;
-	cond_bb = build_cfg(ir_br, list, before, "while_cond");
+	cond_bb = build_cfg(ir_jmp_body, body_bb, body_bb, "while_cond");
+	bb_insert_first(cond_bb, label_while_cond);
 	current_decl_context = old_c;
 
 	//FIXME shall we need the then_entry empty-bb
-	body_bb = build_cfg(while_body, cond_bb, cond_bb, "while body");
 
-	exit_bb = new_basic_block(NULL, body_bb, "while_exit");
-	bb_add_stmt(exit_bb, while_exit_label);
+	bb_insert_first(body_bb, label_while_body);
+	bb_insert_first(body_bb, ir_goto_cond);
+
+	exit_bb = new_basic_block(NULL, cond_bb, "while_exit");
+	bb_add_stmt(exit_bb, label_while_exit);
 
 	make_edge(cond_bb, exit_bb, EDGE_PASSTHOUGH);
 

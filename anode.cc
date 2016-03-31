@@ -218,3 +218,25 @@ anode chain_last(anode chain){
         return t;
 }
 
+
+edge clone_edge(edge e){
+    edge n = (edge)malloc(sizeof (edge_t));
+    n->src = e->src;
+    n->dst = e->dst;
+    n->pred_next = e->pred_next;
+    n->succ_next = e->succ_next;
+    n->flag = e->flag;
+}
+
+edge replace_succ_edge(bb_t *src, bb_t *dst, edge new_edge){
+    edge *e;
+    edge old = NULL;
+    for (e = &src->succ; *e; e = &(*e)->succ_next){
+        if ((*e)->dst == dst){
+            old = *e;
+            *e = new_edge;
+            return old;
+        }
+    }
+    return NULL;   
+}

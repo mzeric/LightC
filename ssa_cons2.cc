@@ -446,7 +446,12 @@ void rebuild(anode_ssa_name *dup_ssa, anode_ssa_name *new_ssa){
     three-address code linear
 */
 void code_3(basic_block_t *block){
-    block->ins.clear();
+    if(block->ins){
+        block->ins->clear();
+        cout<<"CLERR"<<endl;
+    }else{
+        cout<<"UNCLEAR"<<endl;
+    }
     for(anode stmt = block->entry; stmt; stmt = ANODE_CHAIN(stmt)){
 
     }

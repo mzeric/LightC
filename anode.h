@@ -512,9 +512,9 @@ public:
         {
             char *buf =NULL;
             if(name)
-                asprintf(&buf, "%s%d:", name,++num);
+                asprintf(&buf, "%s%d", name,++num);
             else
-                asprintf(&buf, "label_%d:", ++num);
+                asprintf(&buf, "label_%d", ++num);
             
             label = strdup(buf);
             free(buf);
@@ -609,7 +609,10 @@ extern struct basic_block_s entry_exit_blocks[2];
 #define EXIT_BLOCK_PTR (&entry_exit_blocks[1])
 
 edge make_edge(bb src, bb dst, int flag);
+edge clone_edge(edge e);
 edge get_edge(bb src, bb dst);
+edge replace_edge(bb_t *src, bb_t *dst, edge n);
+
 void remove_edge(edge e);
 anode lookup_name_current_bb(const char *name);
 

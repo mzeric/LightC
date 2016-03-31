@@ -1,0 +1,7 @@
+doms 相关，包括doms的计算、dfa公式
+ssa基础：创建，最小，最纯
+	ssa reconstruction，不小于4种，前两种分别对应两种构造SSA的方式
+	直接从AST构建SSA的算法，不需要先计算dom-tree，dom-frontier，相应的re-con算法大量利用搜索算法
+	至少要理解第一种吧，写一篇详细文档吧
+	参考:Static Single Assignment Book Ch5
+与LLVM的register allocation（linear scan）做对比，兼做其他对比

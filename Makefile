@@ -1,12 +1,13 @@
 
 OBJS=token.o anode.o main.o decl.o ssa_cons2.o parse.o dfa.o ra.o lower.o \
-     guile.o lua.o ssa_cons.o code.o
+     lua.o ssa_cons.o code.o
 Headers=  anode.h
 GUILE_INC=`pkg-config --static --cflags guile-2.0`
 GUILE_LD=-lguile-2.0
-LUA_LD=`pkg-config lua --libs`
-CFLAGS=-g -std=c++0x ${GUILE_INC}
-CXXFLAGS=-g -std=c++0x
+LUA_INC=`pkg-config --cflags lua5.2`
+LUA_LD=`pkg-config lua5.2 --libs`
+CFLAGS=-g -std=c++0x ${GUILE_INC} ${LUA_INC}
+CXXFLAGS=-g -std=c++0x ${LUA_INC}
 LDFLAGS=${GUILE_LD} ${LUA_LD}
 bison=bison
 all: lc

@@ -325,17 +325,34 @@ DEFTREECODE (IR_ASSIGN, "ir_assign", 'e', 0)
 DEFTREECODE (IR_PHI, "ir_phi", 'e', 0)
 DEFTREECODE (IR_SSA_NAME, "ir_ssa_name", 'x', 0)
 DEFTREECODE (IR_BRANCH, "ir_branch", 'e', 3)
+DEFTREECODE (IR_GOTO, "ir_goto", 'e', 1)
+DEFTREECODE (IR_JUMP, "ir_jump", 'e', 2)
 DEFTREECODE (IR_LABEL, "ir_label", 'g', 0)
 
 DEFTREECODE (IRC_CMP, "ir_code_cmp", 'i', 2)
 DEFTREECODE (IRC_BRANCH, "ir_code_jmp", 'i', 3)
 DEFTREECODE (IRC_ASSIGN, "ir_code_mov", 'i', 2)
 
+
+DEFTREECODE (IRC_GOTO, "ir_code_goto", 'i', 1)
+DEFTREECODE (IRC_JMP_EQ, "ir_code_icmpeq", 'i', 3)
+DEFTREECODE (IRC_JMP_LE, "ir_code_icmple", 'i', 3)
+DEFTREECODE (IRC_JMP_GE, "ir_code_icmpge", 'i', 3)
+DEFTREECODE (IRC_JMP_LT, "ir_code_icmplt", 'i', 3)
+DEFTREECODE (IRC_JMP_GT, "ir_code_icmpgt", 'i', 3)
+DEFTREECODE (IRC_JMP_NE, "ir_code_icmpne", 'i', 3)
+DEFTREECODE (IRC_JEQ, "ir_code_jeq", 'i', 2)
+DEFTREECODE (IRC_JNE, "ir_code_jne", 'i', 2)
+
 DEFTREECODE (IRC_ADD, "ir_code_add", 'i', 2)
 DEFTREECODE (IRC_SUB, "ir_code_sub", 'i', 2)
 DEFTREECODE (IRC_MUL, "ir_code_mul", 'i', 2)
 DEFTREECODE (IRC_DIV, "ir_code_div", 'i', 2)
 DEFTREECODE (IRC_MOD, "ir_code_mod", 'i', 2)
+
+DEFTREECODE (IRC_PUSH, "ir_code_ipush", 'i', 1)
+DEFTREECODE (IRC_LOAD, "ir_code_iload", 'i', 1)
+DEFTREECODE (IRC_STORE, "ir_code_istore", 'i', 1)
 
 
 DEFTREECODE (IRC_MEM, "ir_code_mem", 'i', 1)

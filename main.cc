@@ -24,7 +24,7 @@ int main(){
 	*/
 
 
-	_init_guile();
+	//_init_guile();
 
 	yydebug = 0;
         c_parse_init();
