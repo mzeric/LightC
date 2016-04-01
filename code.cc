@@ -260,7 +260,7 @@ string show_anode(anode op){
         case INTEGER_CST:
         {
             int v = ((anode_int_cst*)op)->int_cst;
-            return " int:"+std::to_string(v)+" ";
+            return " int:"+std::to_string(v);
         }
             break;
         case PLUS_EXPR:
@@ -268,6 +268,14 @@ string show_anode(anode op){
             anode op1 = ANODE_OPERAND(op, 0);
             anode op2 = ANODE_OPERAND(op, 1);
             return show_anode(op1) + " + " + show_anode(op2);
+        }
+            break;
+        case MODIFY_EXPR:
+        {
+            anode op1 = ANODE_OPERAND(op, 0);
+            anode op2 = ANODE_OPERAND(op, 1);
+            return show_anode(op1) + " = " + show_anode(op2);
+
         }
             break;
         case VAR_DECL:
@@ -395,8 +403,9 @@ void gen_code(anode stmt, list<anode_ins*> &ins){
 void gen_code_block(basic_block_t *block){
         if(!block)
             return;
+        printf("for block %d (%s)\n", block->index, block->comment);
         list<anode_ins*> block_ins;
-        std::cout<<"phi note:\n";
+        //std::cout<<"phi note:\n";
 
         for(anode p = block->phi; p; p = ANODE_CHAIN(p)){
             anode_phi *phi = (anode_phi*)p;
@@ -445,8 +454,9 @@ void gen_jasmin(basic_block_t *block){
 
 void code_gen(basic_block_t *start){
         printf("begin rewrite\n");
-        printf("out_of_SSA\n");
         out_of_ssa_test();
+        printf("out_of_SSA\n");
+
         for(basic_block_t *block = start; block && block != EXIT_BLOCK_PTR; block = block->next){
                 gen_code_block(block);
         }

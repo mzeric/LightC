@@ -175,11 +175,15 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 	anode_label *false_label = new anode_label("if_false");
 
 
+	//anode ir_br = build_stmt(IR_BRANCH, if_cond, true_label, false_label);
 	anode ir_br = build_stmt(IR_BRANCH, if_cond, true_label, false_label);
+	anode ir_jmp_true = build_stmt(IR_JUMP,if_cond, true_label);
 	anode old_c = COMPOUND_DS_OUTER((anode_expr*)if_cond);
 
 	current_decl_context = old_c;
-	if_bb = build_cfg(ir_br, list, before, "if_cond");
+    if_bb = build_cfg(ir_jmp_true, list, before, "if_cond");
+    anode ir_goto_false = build_stmt(IR_GOTO, false_label);
+    bb_add_stmt(if_bb, ir_goto_false);
 	current_decl_context = old_c;
 
 	//FIXME shall we need the then_entry empty-bb
@@ -193,12 +197,18 @@ basic_block_t *build_if_cfg(anode if_stmt, basic_block_t *list, basic_block_t *b
 		if_bb->succ->flag = EDGE_FALSE;
 
 	}
-	if_exit = new_basic_block(NULL, else_bb, "if_exit");
+    if_exit = new_basic_block(NULL, else_bb, "if_exit");
+    anode_label *exit_label = new anode_label("if_exit");
 
 	make_edge(then_bb, if_exit, EDGE_PASSTHOUGH);
 	if(else_stmt){
 		make_edge(else_bb, if_exit, EDGE_PASSTHOUGH);
 		bb_insert_first(else_bb, false_label);
+
+        anode ir_goto_exit = build_stmt(IR_GOTO, exit_label);
+		bb_insert_first(if_exit, exit_label);
+		bb_add_stmt(then_bb, ir_goto_exit);
+
 	}else{
 		make_edge(if_bb, if_exit, EDGE_FALSE);
 		bb_add_stmt(if_exit, false_label);
@@ -500,7 +510,7 @@ void elimate_empty_join(basic_block_t *b){
 	if (succ->succ_next == NULL && pred->pred_next == NULL){
 		assert(pred == succ);
 		/* ok let's do it */
-		printf("elimate %d\n", b->index);
+		printf("elimate %d (%s)\n", b->index, b->comment);
 		b_succ->pred = b->pred;
 		for (edge e = b->pred; e; e = e->pred_next){
 			e->dst = b_succ;
