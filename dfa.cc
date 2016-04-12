@@ -280,8 +280,7 @@ void compute_bb_gen_kill(basic_block_t *start, basic_block_t *end){
 
     }
 }
-#define _FOR_EACH_BB(b, start, end) for (basic_block_t *(b) = (start); (b) != (end); (b) = (b)->next)
-#define FOR_EACH_BB(b, start) _FOR_EACH_BB(b, start, EXIT_BLOCK_PTR)
+
 typedef std::set<basic_block_t*> iter_block_t;
 
 typedef std::list<basic_block_t*> list_t;

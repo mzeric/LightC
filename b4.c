@@ -1,6 +1,6 @@
 int func(){
 
-	int d;
+	int d,x;
 	int c;
 
 	d = 1;

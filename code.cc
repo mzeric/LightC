@@ -446,12 +446,38 @@ void gen_jasmin(basic_block_t *block){
 
                 }
                 
-
         }
+}
+void get_decl_of_func(basic_block_t *start){
+    vector<anode> decls;
 
+    FOR_EACH_BB(block, start->next){
+        for(anode s = block->entry; s; s = ANODE_CHAIN(s)){
+            anode stmt = ANODE_VALUE(s);
+            if(anode_code(stmt) == DECL_STMT){
+                printf("get decl_stmt : ");
+                anode p = ANODE_VALUE(ANODE_OPERAND(stmt, 0));
+                for(anode t = ANODE_OPERAND(stmt,0); t; t = ANODE_CHAIN(t)){
+                    /* t is tree_list */
+                    anode p = ANODE_VALUE(t);
+                    if(anode_code(p) == IR_SSA_NAME)
+                        p = ((anode_ssa_name*)p)->var;
+                    printf("%s ", IDENTIFIER_POINTER(decl_name(p)));
+                    assert(anode_code(p) == VAR_DECL);
+                    decls.push_back(p);
+                }
+                printf("\n");
+            }
+        }
+    }
+
+    printf("total : %d vars\n", decls.size());
+    for(int i = 0; i < decls.size(); ++i){
+        decls[i]->stack_index = i+1;
+
+    }
 
 }
-
 void code_gen(basic_block_t *start){
         printf("begin rewrite\n");
         out_of_ssa_test();
@@ -464,6 +490,7 @@ void code_gen(basic_block_t *start){
         for(basic_block_t *block = start->next; block && block != EXIT_BLOCK_PTR; block = block->next){
                 gen_jasmin(block);
         }
+        get_decl_of_func(start);
 
 }
 

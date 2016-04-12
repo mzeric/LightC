@@ -103,6 +103,7 @@ public:
         anode           chain;
         unsigned        code;
         anode           type; /* each has a type info */
+        unsigned short  stack_index;
         struct basic_block_s *basic_block;
 
         unsigned side_effects_flag : 1;
@@ -142,6 +143,7 @@ public:
         chain = NULL;
         type  = NULL;
         version = 0;
+        stack_index = 0;
         users = new std::set<anode*>;
         
         is_reg = false;
@@ -561,6 +563,9 @@ typedef struct basic_block_s{
 #define BB_STMT_NEXT(s) ANODE_CHAIN((s))
 
 #define FOR_EACH_STMT_OF_BB(s, b)  for (anode t = BB_STMT_BEGIN(b); t,ANODE_VALUE(t); t = BB_STMT_NEXT((s)))
+
+#define _FOR_EACH_BB(b, start, end) for (basic_block_t *(b) = (start); (b) != (end); (b) = (b)->next)
+#define FOR_EACH_BB(b, start) _FOR_EACH_BB(b, start, EXIT_BLOCK_PTR)
 
 typedef struct edge_s{
 
