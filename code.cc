@@ -17,6 +17,11 @@ string show_anode(anode op);
 */
 typedef std::map<anode_ssa_name*, vector<anode_ssa_name*> > ssa_out_t;
 typedef std::map<anode_ssa_name*, anode_ssa_name*> ssa_in_t;
+
+typedef struct _stack_s_t{
+    vector<anode> op_stack;
+
+}stack_s_t;
 /*
     Test
 
@@ -431,7 +436,49 @@ void gen_code_block(basic_block_t *block){
         }
 
 }
+void jasmin_mov(anode op1, anode op2){
 
+}
+void jasmin_iload(anode op1){
+
+}
+void jasmin_istore(anode op1){
+
+
+}
+anode code_expr(anode e);
+void code_load(anode var, stack_s_t s){
+
+}
+anode code_add(anode e, stack_s_t ss){
+ 
+}
+anode code_sub(anode e, stack_s_t ss){
+
+}
+anode code_mul(anode e, stack_s_t ss){
+
+}
+anode code_div(anode e, stack_s_t ss){
+
+}
+
+void code_modifier(anode e, stack_s_t ss){
+    assert(anode_code(e) == MODIFY_EXPR);
+    
+    anode op1 = ANODE_OPERAND(e, 0);
+    anode op2 = ANODE_OPERAND(e, 2);
+
+    if(anode_code(op2) == IR_SSA_NAME || anode_code(op2) == VAR_DECL){
+        jasmin_iload(op2);
+        jasmin_istore(op1);
+
+    }else{
+
+
+    }
+
+}
 
 void gen_jasmin(basic_block_t *block){
     if(block->ins->empty())
@@ -448,7 +495,7 @@ void gen_jasmin(basic_block_t *block){
                 
         }
 }
-void get_decl_of_func(basic_block_t *start){
+vector<anode> get_decl_of_func(basic_block_t *start){
     vector<anode> decls;
 
     FOR_EACH_BB(block, start->next){
@@ -477,7 +524,24 @@ void get_decl_of_func(basic_block_t *start){
 
     }
 
+    return decls;
 }
+
+
+void parse_stmt(anode stmt){
+    if(anode_code(stmt) == MODIFY_EXPR){
+        anode ll = ANODE_OPERAND(stmt, 0);
+        //string code = "istore_"+"";
+
+
+    }else{
+
+
+    }
+
+
+}
+
 void code_gen(basic_block_t *start){
         printf("begin rewrite\n");
         out_of_ssa_test();

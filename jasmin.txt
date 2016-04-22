@@ -1,0 +1,19 @@
+
+Jasmin Ins Samples
+===================
+
+
+stack op
+
+ldc load a cst on top, could be float, int , string
+
+
+
+
+
+=============
+int i = 10;
+
+
+bipush 10
+astore_index
