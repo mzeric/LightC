@@ -30,6 +30,12 @@ typedef struct _stack_s_t{
 
 */
 
+bool is_cst (anode e){
+    anode p = e;
+    if(anode_code(e) == IR_SSA_NAME)
+        e = ((anode_ssa_name*)e)->var;
+    return anode_code_class(anode_code(e)) == 'c';
+}
 
 
 ssa_in_t build (basic_block_t *block , int index){
@@ -432,7 +438,7 @@ void gen_code_block(basic_block_t *block){
         block->ins->clear();
         for(auto it: block_ins){        
 
-        block->ins->push_back(it);
+            block->ins->push_back(it);
         }
 
 }
@@ -444,22 +450,49 @@ void jasmin_iload(anode op1){
 }
 void jasmin_istore(anode op1){
 
-
 }
-anode code_expr(anode e);
+void jasmin_iadd(){
+}
+void jasmin_isub(){
+}
+void jasmin_imul(){
+}
+void jasmin_idiv(){
+}
+void code_expr(anode e, stack_s_t ss);
 void code_load(anode var, stack_s_t s){
 
 }
 anode code_add(anode e, stack_s_t ss){
+    anode op1 = ANODE_OPERAND(e, 0);
+    anode op2 = ANODE_OPERAND(e, 1);
+    jasmin_iload(op1);
+    jasmin_iload(op2);
+    jasmin_iadd();
  
 }
 anode code_sub(anode e, stack_s_t ss){
+    anode op1 = ANODE_OPERAND(e, 0);
+    anode op2 = ANODE_OPERAND(e, 1);
+    jasmin_iload(op1);
+    jasmin_iload(op2);
+    jasmin_isub();
 
 }
 anode code_mul(anode e, stack_s_t ss){
+    anode op1 = ANODE_OPERAND(e, 0);
+    anode op2 = ANODE_OPERAND(e, 1);
+    jasmin_iload(op1);
+    jasmin_iload(op2);
+    jasmin_imul();
 
 }
 anode code_div(anode e, stack_s_t ss){
+    anode op1 = ANODE_OPERAND(e, 0);
+    anode op2 = ANODE_OPERAND(e, 1);
+    jasmin_iload(op1);
+    jasmin_iload(op2);
+    jasmin_idiv();
 
 }
 
@@ -467,16 +500,36 @@ void code_modifier(anode e, stack_s_t ss){
     assert(anode_code(e) == MODIFY_EXPR);
     
     anode op1 = ANODE_OPERAND(e, 0);
-    anode op2 = ANODE_OPERAND(e, 2);
+    anode op2 = ANODE_OPERAND(e, 1);
 
     if(anode_code(op2) == IR_SSA_NAME || anode_code(op2) == VAR_DECL){
         jasmin_iload(op2);
         jasmin_istore(op1);
 
-    }else{
-
+    }else{// this is a expr
+        code_expr(op2, ss);
+        jasmin_istore(op1);
 
     }
+
+}
+
+void code_expr(anode e, stack_s_t ss){
+    if(anode_code(e) == PLUS_EXPR){
+
+        code_add(e, ss);
+
+    }
+    if(anode_code(e) == MINUS_EXPR){
+        code_sub(e, ss);
+    }
+    if(anode_code(e) == MULT_EXPR){
+        code_mul(e, ss);
+    }
+    if(anode_code(e) == TRUNC_DIV_EXPR){
+        code_div(e, ss);
+    }
+
 
 }
 
@@ -492,7 +545,7 @@ void gen_jasmin(basic_block_t *block){
 
 
                 }
-                
+ 
         }
 }
 vector<anode> get_decl_of_func(basic_block_t *start){
