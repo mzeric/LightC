@@ -11,7 +11,7 @@ ightC is a ANSI C compiler. implement with modern retargetable design
 * AST 转换成中间代码后，立即进入SSA模式
   * 计算 出 CFG 的 dominance frontier 
   * 计算出 变量的liveness
-  * 使用Cytron 算法构建SSA [cytron算法实现](cytron)
+  * 使用Cytron 算法构建SSA [cytron算法实现](https://github.com/mzeric/LightC/wiki/cytron)
 * SSA的优化
 * 基于 SSA的寄存器分配
 * SSA转换成普通模式
