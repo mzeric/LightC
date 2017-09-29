@@ -12,7 +12,7 @@ string show_anode(anode op);
 
 /*
         gencode for:(intel i386)
-                a = b + c 
+                a = b + c
         op: IRC_ADD, IRC_SUB
 */
 typedef std::map<anode_ssa_name*, vector<anode_ssa_name*> > ssa_out_t;
@@ -55,7 +55,7 @@ bool check_lost_block(basic_block_t *pblock){
     if(succ  == NULL)
         return false;
 
-    
+
     if(succ->succ_next == NULL){
         return false;
     }
@@ -77,7 +77,7 @@ bool check_lost_block(basic_block_t *pblock){
 
         edge old_edge = *e;
         edge new_edge = clone_edge(*e);
-        
+
         new_edge->dst = empty_block;
         (*e)->src = empty_block;
 
@@ -91,7 +91,7 @@ bool check_lost_block(basic_block_t *pblock){
         empty_block->pred = new_edge;
 
 
-        
+
     }
 
     return true;
@@ -151,7 +151,7 @@ void topological_phi(ssa_out_t &so, ssa_in_t &si){
             auto break_it = so.begin();
             break_sycle = break_it->first;
             break_next = break_it->second.front();
-    
+
             anode tmp = create_tmp_var(break_sycle);
 
             out_mov(break_sycle, tmp);
@@ -199,7 +199,7 @@ void out_of_ssa_test(){
    anode_ssa_name *ssa_4 = build_test_ssa("phi_var4");
    anode_ssa_name *ssa_5 = build_test_ssa("phi_var5");
 
- 
+
    ssa_in_t ssa_test2;
    ssa_test2[ssa_2] = ssa_1;
    ssa_test2[ssa_1] = ssa_4;
@@ -213,7 +213,7 @@ void out_of_ssa_test(){
 
 
 anode code_op2(anode b, anode c, int op, list<anode_ins*> &ins){
-    
+
     anode r1 = create_tmp_var(b);
     anode r2 = create_tmp_var(c);
     r1->is_reg = true;/* must be a register */
@@ -436,12 +436,16 @@ void gen_code_block(basic_block_t *block){
             block->ins = new list<anode_ins*>();
 
         block->ins->clear();
-        for(auto it: block_ins){        
+        for(auto it: block_ins){
 
             block->ins->push_back(it);
         }
 
 }
+/*
+  generate jasmin code
+
+*/
 void jasmin_mov(anode op1, anode op2){
 
 }
@@ -469,7 +473,7 @@ anode code_add(anode e, stack_s_t ss){
     jasmin_iload(op1);
     jasmin_iload(op2);
     jasmin_iadd();
- 
+
 }
 anode code_sub(anode e, stack_s_t ss){
     anode op1 = ANODE_OPERAND(e, 0);
@@ -498,7 +502,7 @@ anode code_div(anode e, stack_s_t ss){
 
 void code_modifier(anode e, stack_s_t ss){
     assert(anode_code(e) == MODIFY_EXPR);
-    
+
     anode op1 = ANODE_OPERAND(e, 0);
     anode op2 = ANODE_OPERAND(e, 1);
 
@@ -545,7 +549,7 @@ void gen_jasmin(basic_block_t *block){
 
 
                 }
- 
+
         }
 }
 vector<anode> get_decl_of_func(basic_block_t *start){
@@ -610,4 +614,3 @@ void code_gen(basic_block_t *start){
         get_decl_of_func(start);
 
 }
-

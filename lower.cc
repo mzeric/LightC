@@ -473,7 +473,10 @@ void lower_modify_expr(anode stmt, anode *prev_stmt){
 	if (is_ir_val(rhs)){
 		printf("get var_decl:%s\n", IDENTIFIER_POINTER(decl_name(lhs)));
 //		anode p = build_ir_len(
-	}
+	}else{
+        anode tmp_expr = create_tmp_var(lhs);
+        anode new_stmt = build_stmt(MODIFY_EXPR, tmp_expr, rhs);
+    }
 	printf("is val %d\n", is_ir_val(rhs));
 
 	//build_IR(IR_ASSIGN, lhs, anode_code(rhs));

@@ -13,6 +13,7 @@ int func(){
 	}else{
 		d = 4;
 		d = d;
+		d++;
 
 	}
 

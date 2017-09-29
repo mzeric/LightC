@@ -1,6 +1,6 @@
 
 OBJS=token.o anode.o main.o decl.o ssa_cons2.o parse.o dfa.o ra.o lower.o \
-     lua.o ssa_cons.o code.o
+     lua.o ssa_cons.o code.o code_legacy.o code_olive.o backend.o
 Headers=  anode.h
 GUILE_INC=`pkg-config --static --cflags guile-2.0`
 GUILE_LD=-lguile-2.0
