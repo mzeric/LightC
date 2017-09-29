@@ -5,7 +5,7 @@ ightC is a ANSI C compiler. implement with modern retargetable design
 为了实践编译原理，解决实际实现中会遇到的问题；希望结构会清晰。
 
 ## Architecture
-版本2.0 设计：
+version 2.0 design：
 * 手写C的前端
   * 部分完成 例子见 [json parser](https://mzeric.github.io/compiler/2016/09/30/json-parser.html)
 * AST 转换成中间代码后，立即进入SSA模式
@@ -19,7 +19,7 @@ ightC is a ANSI C compiler. implement with modern retargetable design
 
 
 
-版本1.0 设计:
+version 1.0 design:
 * 构造出AST后再生成中间代码，而不是前端一边parse一边生成
 * 核心结构是 `typedef anode_node* anode;` 前端和中间代码均使用anode代表
 * 构造AST时使用 c-tree.def 定义的节点类型，与GCC相同
